@@ -20,21 +20,21 @@ export default function Home() {
       <div className="flex flex-col gap-4">
         <button
           className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-          onClick={() => router.push("/screens/screen1")}
+          onClick={() => router.push("/screens/ian")}
         >
-          Go to Mockup 1
+          Ian&apos;s Mockup
         </button>
         <button
           className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
-          onClick={() => router.push("/screens/screen2")}
+          onClick={() => router.push("/screens/shelley")}
         >
-          Go to Mockup 2
+          Shelley&apos;s Mockup
         </button>
         <button
           className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-          onClick={() => router.push("/screens/screen3")}
+          onClick={() => router.push("/screens/phoebe")}
         >
-          Go to Mockup 3
+          Phoebe&apos;s Mockup
         </button>
       </div>
     </div>
