@@ -1,4 +1,4 @@
-export default function Screen3() {
-    return <div className="min-h-screen flex items-center justify-center">Welcome to Screen 3</div>;
+export default function PhoebeScreen() {
+    return <div className="min-h-screen flex items-center justify-center">Welcome to Phoebe&apos;s Screen</div>;
   };
   
