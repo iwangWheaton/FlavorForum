@@ -66,11 +66,15 @@ export default function RecipeForm() {
         </form>
       ) : (
         <div className="flex flex-col items-center gap-4">
-          <h2 className="text-2xl font-bold">Recipe Submitted!</h2>
+          <h2 className="text-2xl font-bold">
+            Thanks for submitting{" "}
+            <span className="text-blue-500">{recipeData.title}</span>!
+          </h2>
           <button className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
             See Your Recipe
           </button>
-        </div> )}
+        </div>
+      )}
     </div>
   );
 }
