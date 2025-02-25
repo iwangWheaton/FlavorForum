@@ -1,20 +1,32 @@
-import Link from "next/link";
+"use client";
 
-export default function Navbar() {
+import Link from "next/link";
+import { useSession, signIn, signOut } from "next-auth/react";
+
+const Navbar = () => {
+  const { data: session } = useSession();
+
   return (
-    <nav className="flex justify-between p-4 bg-gray-800 text-white">
-      <Link href="/">Home</Link>
-      <Link href="/recipes">Recipes</Link>
-      <Link href="/community">Community</Link>
-      <Link href="/profile">Profile</Link>
-      {session ? (
-        <>
-          <Link href="/profile">{session.user.name}</Link>
-          <button onClick={() => signOut()}>Logout</button>
-        </>
-      ) : (
-        <button onClick={() => signIn()}>Login</button>
-      )}
+    <nav className="p-4 flex justify-between bg-gray-900 text-white">
+      <div className="flex gap-4">
+        <Link href="/">Home</Link>
+        <Link href="/main/recipes">Recipes</Link>
+        <Link href="/main/community">Community</Link>
+        <Link href="/main/profile">Profile</Link>
+      </div>
+      
+      <div>
+        {session ? (
+          <>
+            <span className="mr-4">Welcome, {session.user.name}</span>
+            <button onClick={() => signOut()} className="bg-red-500 px-4 py-2 rounded">Logout</button>
+          </>
+        ) : (
+          <button onClick={() => signIn()} className="bg-blue-500 px-4 py-2 rounded">Login</button>
+        )}
+      </div>
     </nav>
   );
-}
+};
+
+export default Navbar;

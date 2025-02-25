@@ -1,9 +1,10 @@
 "use client";
-import { useState } from 'react';
-import styles from './Login.module.css';
 
-export default function PhoebeScreen() {
-    const [firstName, setFirstName] = useState('');
+import { useState } from "react";
+
+import styles from './Login.module.css';
+export default function Signup() {
+  const [firstName, setFirstName] = useState('');
     const [formData, setFormData] = useState({
       fullName: '',
       email: '',
@@ -92,4 +93,3 @@ export default function PhoebeScreen() {
       </div>
     )
   };
-  

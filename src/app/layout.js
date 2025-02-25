@@ -1,7 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import "./global.css";
 import './styles/fonts.css';
 import Navbar from "@/components/Navbar";
+import ClientSessionProvider from "./ClientSessionProvider";
 
 //this is the global layout
 
@@ -22,14 +23,15 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-       
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <Navbar /> 
-        <main>{children}</main>
-      </body>
-    </html>
+    <ClientSessionProvider>
+      <html lang="en">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+          <Navbar /> 
+          <main className="flex-grow p-6">{children}</main>
+        </body>
+      </html>
+    </ClientSessionProvider>
   );
 }
