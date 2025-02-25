@@ -12,7 +12,7 @@ export default function PhoebeScreen() {
 
     const [ isSubmitted, setSubmitted ] = useState(false);
 
-    const handleChange = (e) => {
+    const handleChange = (e) => { 
       const { name, value } = e.target; // gets field that was updated
       setFormData(prevState => ({ // updates the state with the new value
         ...prevState,
