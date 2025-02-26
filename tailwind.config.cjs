@@ -6,8 +6,8 @@ module.exports = {
   ],
   theme: {
     extend: {
-      colors: { //example custom colors
-        primary: "#4F46E5", // Custom Primary Color (Blue)
+      colors: { // our color scheme
+        primary: "#7EBDC2",
         secondary: "#9333EA", // Custom Secondary Color (Purple)
         accent: "#F59E0B", // Custom Accent Color (Orange)
         background: "#545454", // Custom Background Color

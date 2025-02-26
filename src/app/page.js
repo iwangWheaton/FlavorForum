@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import Button from "@/components/Button";
+
 //this is the homepage 
 export default function Home() {
   const router = useRouter();
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-6">
+    <div style={{ backgroundColor: 'white', color: '#171717' }} className="flex flex-col items-center justify-center min-h-screen p-8 gap-6">
       <div className="tag-mock-screen mt-8">
         <header>
           <h1 className="text-2xl font-bold">Search for recipes through tags</h1>
@@ -27,6 +29,11 @@ export default function Home() {
       <h1 className="text-3xl font-bold">Welcome to Flavor Forum</h1>
       <p className="text-gray-600">Find and share amazing recipes with your community.</p>
       <div className="flex gap-4">
+        <div className="flex gap-4">
+          <Button onClick={() => router.push("/login")}>
+              Browse Recipes
+          </Button>
+        </div>
         <button onClick={() => router.push("/login")} className="bg-blue-500 text-white p-3 rounded">
           Login
         </button>
@@ -34,7 +41,6 @@ export default function Home() {
           Sign Up
         </button>
       </div>
-      
     </div> 
   );
 }
