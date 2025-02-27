@@ -6,7 +6,7 @@ export default async function MainPage() {
   return (
     <main className="p-6">
       <h1 className="text-3xl font-bold">Welcome Back, {session?.user?.name || "Chef"}! 👨‍🍳</h1>
-      <p className="text-lg mt-2">Let's find your next favorite recipe.</p>
+      <p className="text-lg mt-2">Let&apos;s find your next favorite recipe.</p>
 
       {/* Featured Recipes Section */}
       <section className="mt-6">
