@@ -16,8 +16,18 @@ const Button = ({
 
   const buttonClasses = `${baseStyles} ${className}`;
 
+  if (href) {
+    return (
+      <Link href={href}>
+        <a className={buttonClasses} {...props}>
+          {children}
+        </a>
+      </Link>
+    );
+  }
+
   return (
-    <button className={`${baseStyles} bg-red ${className}` } {...props}>
+    <button type={type} className={buttonClasses} onClick={onClick} {...props}>
       {children}
     </button>
   );
