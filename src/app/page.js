@@ -70,7 +70,7 @@ export default function Home() {
           <Button onClick={() => router.push("/login")} className="!bg-blue">
             Login
           </Button>
-          <Button onClick={() => router.push("/signup")} className="!bg-blue">
+          <Button onClick={() => router.push("/signup")}>
             Sign Up
           </Button>
         </div>

@@ -12,7 +12,7 @@ const Button = ({
   type = "button",
   ...props
 }) => {
-  const baseStyles = "px-4 py-2 text-white rounded transition-colors";
+  const baseStyles = "px-4 py-2 bg-red text-white rounded transition-colors";
 
   const buttonClasses = `${baseStyles} ${className}`;
 
