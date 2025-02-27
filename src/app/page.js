@@ -3,55 +3,87 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Button from "@/components/Button";
+import CategorySection from "@/components/CategorySection";
+
+const category = {
+  "id": "quick-meals",
+  "name": "Quick Meals",
+  "image": "/images/categories/quick-meals.jpg",
+  "description": "Ready in 30 minutes or less"
+};
+
+const recipes = [
+  {
+    "id": "1",
+    "title": "Classic Spaghetti Carbonara",
+    "image": "/images/carbonara.jpg",
+    "cookingTime": 30,
+    "difficulty": "Medium",
+    "servingSize": 4,
+    "categories": ["main-course", "pasta", "quick-meals"],
+    "cuisineType": "Italian",
+    "dietaryRestrictions": [],
+    "averageRating": 4.7,
+    "reviewCount": 42
+  },
+  {
+    "id": "2",
+    "title": "Vegetarian Buddha Bowl",
+    "image": "/images/buddha-bowl.jpg",
+    "cookingTime": 25,
+    "difficulty": "Easy",
+    "servingSize": 2,
+    "categories": ["main-course", "healthy", "vegetarian", "quick-meals"],
+    "cuisineType": "Fusion",
+    "dietaryRestrictions": ["Vegetarian", "Gluten-Free"],
+    "averageRating": 4.5,
+    "reviewCount": 28
+  },
+  {
+    "id": "3",
+    "title": "Quick Chocolate Brownies",
+    "image": "/images/brownies.jpg",
+    "cookingTime": 35,
+    "difficulty": "Easy",
+    "servingSize": 12,
+    "categories": ["dessert", "quick-meals"],
+    "cuisineType": "American",
+    "dietaryRestrictions": ["Vegetarian"],
+    "averageRating": 4.9,
+    "reviewCount": 65
+  }
+];
 
 //this is the homepage 
 export default function Home() {
   const router = useRouter();
 
   return (
-    <div style={{ backgroundColor: 'white', color: '#171717' }} className="flex flex-col items-center justify-center min-h-screen p-8 gap-6">
-      <h1 className="text-3xl font-bold">Welcome to Flavor Forum</h1>
-      <p className="text-gray-600">Find and share amazing recipes with your community.</p>
-      <div className="flex gap-4">
-        <div className="flex gap-4">
-          <Button onClick={() => router.push("/login")}>
-              Browse Recipes
+    <div className="flex flex-col items-center min-h-screen p-8 gap-6 bg-white">
+      <div className="w-full max-w-6xl text-center my-8">
+        <h1 className="text-5xl font-bold text-black">Welcome to Flavor Forum</h1>
+        <p className="text-gray-600 mt-4 text-lg">
+          Find and share amazing recipes with your community.
+        </p>
+        <div className="flex gap-4 justify-center mt-6">
+          
+          <Button onClick={() => router.push("/login")} className="!bg-blue">
+            Login
+          </Button>
+          <Button onClick={() => router.push("/signup")}>
+            Sign Up
           </Button>
         </div>
-        <Button onClick={() => router.push("/login")} className="!bg-blue">
-          Login
-        </Button>
-        <button onClick={() => router.push("/signup")} className="bg-green-500 text-white p-3 rounded">
-          Sign Up
-        </button>
       </div>
 
-
-      <div className="tag-mock-screen mt-8">
-        <header>
-          <h1 className="text-2xl font-bold">Browse Recipes</h1>
-        </header>
-        <main className="flex gap-4 mt-4">
-          <button 
-            onClick={() => router.push("/tags/easy")} 
-            className="nav-button bg-gray-200 p-2 rounded"
-          >
-            Easy
-          </button>
-          <button 
-            onClick={() => router.push("/tags/sweet")} 
-            className="nav-button bg-gray-200 p-2 rounded"
-          >
-            Sweet
-          </button>
-          <button 
-            onClick={() => router.push("/tags/lunch")} 
-            className="nav-button bg-gray-200 p-2 rounded"
-          >
-            Lunch
-          </button>
-        </main>
+      {/* Quick Meals Section */}
+      <div className="w-full max-w-6xl">
+        <CategorySection 
+          category={category} 
+          recipes={recipes} 
+        />
       </div>
+
     </div> 
   );
 }

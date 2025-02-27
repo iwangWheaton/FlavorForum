@@ -17,6 +17,18 @@ module.exports = {
         sans: ['Rufina', "serif"],
         body: ["Inter", "sans-serif"],
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            h1: {
+              color: '#000000',
+            },
+            h2: {
+              color: '#000000',
+            },
+          },
+        }
+      },
       borderRadius: {
         xl: "1rem",
         "2xl": "1.5rem",
