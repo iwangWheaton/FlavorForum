@@ -15,7 +15,13 @@ const Navbar = () => {
         <Link href="/main/profile">Profile</Link>
       </div>
       
-      <div>
+      <div className="flex gap-4 items-center">
+        <Link href="/main/community">
+          <button className="bg-green-500 px-4 py-2 rounded">Join Community</button>
+        </Link>
+        <Link href="/main/recipes/new">
+          <button className="bg-yellow-500 px-4 py-2 rounded">Create Recipe</button>
+        </Link>
         {session ? (
           <>
             <span className="mr-4">Welcome, {session.user.name}</span>
