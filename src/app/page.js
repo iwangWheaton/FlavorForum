@@ -25,9 +25,11 @@ export default function Home() {
           Sign Up
         </button>
       </div>
+
+
       <div className="tag-mock-screen mt-8">
         <header>
-          <h1 className="text-2xl font-bold">Search for recipes through tags</h1>
+          <h1 className="text-2xl font-bold">Browse Recipes</h1>
         </header>
         <main className="flex gap-4 mt-4">
           <button 

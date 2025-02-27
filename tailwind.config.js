@@ -14,8 +14,8 @@ module.exports = {
         foreground: "#1F2937",
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        heading: ["Poppins", "sans-serif"],
+        sans: ['Rufina', "serif"],
+        body: ["Inter", "sans-serif"],
       },
       borderRadius: {
         xl: "1rem",
