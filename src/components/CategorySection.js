@@ -9,8 +9,8 @@ const CategorySection = ({ category, recipes }) => {
     <section className="my-8">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h2 className="text-3xl font-bold text-black">{category.name}</h2>
-          <p className="text-gray-600">{category.description}</p>
+          <h2 className="text-3xl font-bold text-gray">{category.name}</h2>
+          <p className="text-gray">{category.description}</p>
         </div>
         <Link 
           href={`/categories/${category.id}`}
