@@ -2,22 +2,35 @@
 
 import { useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter,useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { data: session } = useSession();
+  const redirectTo = searchParams.get("redirect") || "/";
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
   useEffect(() => {
     if (session) {
       router.push("/main"); // Redirect after login
     }
   }, [session]);
   
-  const handleLogin = () => {
+  const handleLogin = async (e) => {
+    e.preventDefault();
     console.log("Logging in with", email, password);
+    const res = await signIn("credentials", {
+      username: e.target.username.value,
+      password: e.target.password.value,
+      redirect: false,
+    });
+    if (res.ok) router.push(redirectTo);
   };
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -31,7 +44,6 @@ export default function Login() {
       <button onClick={() => signIn("google")} className="bg-red text-white p-2 mt-2 w-64">
         Sign in with Google
       </button>
-    
     </div>
   );
 }
