@@ -2,18 +2,28 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Button from "@/components/Button";
+import Image from "next/image";
 
 export default function CommunityPage({ params }) {
-  const { communityId } = params;
+  const [communityId, setCommunityId] = useState(null);
   const { data: session } = useSession();
   const router = useRouter();
   
   // Sample community data (should match `join/page.js`)
   const sampleCommunities = {
-    "1": { name: "Healthy Eats", description: "A place for nutritious and delicious meals." },
-    "2": { name: "Spicy Lovers", description: "For those who love an extra kick in their food." },
-    "3": { name: "Baking Masters", description: "For passionate bakers sharing their best recipes." },
+    "1": { name: "Healthy Eats", description: "A place for nutritious and delicious meals.", image: "/images/spicy.jpg" },
+    "2": { name: "Spicy Lovers", description: "For those who love an extra kick in their food.", image: "/images/spicy.jpg" },
+    "3": { name: "Baking Masters", description: "For passionate bakers sharing their best recipes.", image: "/images/bake.png" },
   };
+
+  useEffect(() => {
+    async function fetchParams() {
+      const resolvedParams = await params;
+      setCommunityId(resolvedParams.communityId);
+    }
+    fetchParams();
+  }, [params]);
 
   const community = sampleCommunities[communityId];
 
@@ -22,8 +32,9 @@ export default function CommunityPage({ params }) {
   }
 
   const handleJoin = () => {
+    console.log("Session stat:", session);
     if (!session) {
-      router.push(`/auth/login?redirect=/main/community/${communityId}`);
+      router.push(`/signup?redirect=/main/community/${communityId}`);
       return;
     }
     alert(`Joined ${community.name}!`); // Replace with API call later
@@ -32,11 +43,18 @@ export default function CommunityPage({ params }) {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold">{community.name}</h1>
-      <p className="text-gray-700">{community.description}</p>
-      <button onClick={handleJoin} className="bg-blue-500 text-white p-2 rounded mt-2">
-        Join Community
-      </button>
+      <div className="relative w-full h-64">
+        <Image src={community.image} alt={community.name} layout="fill" objectFit="cover" className="rounded-lg" />
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <h1 className="text-4xl font-bold text-white">{community.name}</h1>
+        </div>
+      </div>
+      <div className="mt-6">
+        <h2 className="text-gray-700">{community.description}</h2>
+        <Button onClick={handleJoin} className="bg-blue-500 text-white p-2 rounded mt-2">
+          Join Community
+        </Button>
+      </div>
     </div>
   );
 }
