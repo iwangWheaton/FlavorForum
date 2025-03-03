@@ -112,7 +112,7 @@ export default function Signup() {
 
           <button type="submit" className={styles.button}>Let&apos;s Get Cooking!</button>
         </form>
-        <Button onClick={() => signIn("google", { callbackUrl: redirect })} className="bg-blue-500 text-white p-10 rounded">
+        <Button onClick={() => signIn("google", { callbackUrl: redirect || '/' })} className="bg-blue-500 text-white p-10 rounded">
           Sign up with Google
         </Button>
       </div>

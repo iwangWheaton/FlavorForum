@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Button from "@/components/Button";
 import CategorySection from "@/components/CategorySection";
 
@@ -54,9 +55,26 @@ const recipes = [
   }
 ];
 
-//this is the homepage 
+// Mock feed 
+const feed = [
+  {
+    id: 1,
+    user: "Alex",
+    content: "Check out this amazing avocado toast recipe!",
+    image: "/images/avacado.jpg"
+  },
+  {
+    id: 2,
+    user: "Chris",
+    content: "Best hot sauce recommendations? 🔥",
+    image: "/images/sauce.jpg"
+  }
+];
+
+// This is the homepage 
 export default function Home() {
   const router = useRouter();
+  const { data: session } = useSession();
 
   return (
     <div className="flex flex-col items-center min-h-screen p-8 gap-6 bg-white">
@@ -65,25 +83,37 @@ export default function Home() {
         <p className="text-gray mt-4 text-lg">
           Find, organize, and share amazing recipes with your community.
         </p>
-        <div className="flex gap-4 justify-center mt-6">
-          
-          <Button onClick={() => router.push("/login")} className="!bg-blue">
-            Login
-          </Button>
-          <Button onClick={() => router.push("/signup")}>
-            Sign Up
-          </Button>
-        </div>
-      </div>
-
-      {/* Quick Meals Section */}
+        {/* Quick Meals Section */}
       <div className="w-full max-w-6xl">
         <CategorySection 
           category={category} 
           recipes={recipes} 
         />
       </div>
+        {session ? (
+          <div className="w-full max-w-6xl mt-6">
+            <h2 className="text-3xl font-bold mb-4">Your Feed</h2>
+            {feed.map((post) => (
+              <div key={post.id} className="bg-white p-4 mb-4 rounded-lg shadow-md">
+                <h1 className="text-gray-900 font-semibold">{post.user}</h1>
+                <h2 className="text-gray-700">{post.content}</h2>
+                <Image src={post.image} alt={post.content} width={600} height={400} className="rounded-lg mt-2" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex gap-4 justify-center mt-6">
+            <Button onClick={() => router.push("/login")} className="!bg-blue">
+              Login
+            </Button>
+            <Button onClick={() => router.push("/signup")}>
+              Sign Up
+            </Button>
+          </div>
+        )}
+      </div>
 
+      
     </div> 
   );
 }
