@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import RecipeCard from "@/components/RecipeCard";
 import { getRecipes } from "@/lib/recipeService";
 
 export default function RecipesPage() {
@@ -11,7 +12,16 @@ export default function RecipesPage() {
     const fetchRecipes = async () => {
       try {
         const data = await getRecipes();
-        setRecipes(data);
+
+        const formattedRecipes = data.map(recipe => ({
+          ...recipe,
+          image: recipe.image || "/images/background.avif",
+          averageRating: recipe.averageRating || "No ratings yet",
+          cookingTime: recipe.cookingTime || "30",
+          difficulty: recipe.difficulty || "Medium",
+          dietaryRestrictions: recipe.dietaryRestrictions || []
+        }));
+        setRecipes(formattedRecipes);
       } catch (error) {
         console.error("Error:", error);
       } finally {
@@ -22,34 +32,27 @@ export default function RecipesPage() {
     fetchRecipes();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="p-8 text-center">Loading...</div>;
 
   return (
-    <div className="p-4">
+    <div className="p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Recipes</h1>
         <Link href="/main/recipes/new">
-          <button className="p-2 bg-blue text-white">Create Recipe</button>
+          <button className="p-2 bg-red text-white rounded">Create Recipe</button>
         </Link>
       </div>
 
       {recipes.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {recipes.map((recipe) => (
-            <div key={recipe.id} className="border p-4 rounded">
-              <h2 className="text-xl font-bold">{recipe.title}</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {new Date(recipe.createdAt?.toDate()).toLocaleDateString()}
-              </p>
-              <div className="mt-2">
-                <h3 className="font-bold">Ingredients:</h3>
-                <p className="whitespace-pre-line">{recipe.ingredients}</p>
-              </div>
-            </div>
+            <RecipeCard key={recipe.id} recipe={recipe} />
           ))}
         </div>
       ) : (
-        <p>No recipes yet. Create your first recipe!</p>
+        <div className="text-center py-8">
+          <p className="text-gray">No recipes yet. Create your first recipe!</p>
+        </div>
       )}
     </div>
   );

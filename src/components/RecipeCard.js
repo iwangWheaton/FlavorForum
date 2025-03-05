@@ -25,7 +25,7 @@ const RecipeCard = ({ recipe }) => {
             </div>
           </div>
           
-          <div className="mt-2 flex justify-between text-sm text-gray-600">
+          <div className="mt-2 flex justify-between text-sm text-gray">
             <div>
               <span>{recipe.cookingTime} mins</span>
             </div>
