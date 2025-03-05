@@ -16,7 +16,8 @@ export default function CreateRecipe() {
     mealType: "Main Course",
     ingredients: "",
     instructions: "",
-    dietaryOptions: []
+    dietaryOptions: [],
+    image: "/images/background.avif"
   });
 
   const dietaryOptions = ["Gluten-Free", "Dairy-Free", "Vegan", "Vegetarian"];
@@ -90,7 +91,6 @@ export default function CreateRecipe() {
                   name="cookingTime"
                   value={recipeData.cookingTime}
                   onChange={handleChange}
-                  min="1"
                   required
                   className="w-full p-2 border border-gray/20 rounded-lg text-gray"
                 />
