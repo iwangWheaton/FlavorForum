@@ -18,6 +18,7 @@ const Navbar = () => {
       <div className="bg-gray flex gap-4 items-center">
         <Link href="/main/community">
           <button className="bg-green-500 px-4 py-2 rounded">Join Community</button>
+          
         </Link>
         <Link href="/main/recipes/new">
           <button className="bg-yellow-500 px-4 py-2 rounded">Create Recipe</button>
