@@ -204,11 +204,11 @@ export default function CreateRecipe() {
       ) : (
         <div className="text-center bg-white rounded-lg p-8">
           <h2 className="text-2xl font-bold text-gray mb-4">Recipe Submitted!</h2>
-          <p className="mb-6 text-gray/80">Your recipe "{recipeData.title}" has been successfully created.</p>
+          <p className="mb-6 text-gray/80">Your recipe &quot;{recipeData.title}&quot; has been successfully created.</p>
           <div className="flex gap-4 justify-center">
             <button 
               onClick={() => router.push("/main/recipes")}
-              className="px-4 py-2 bg-blue text-white rounded-lg hover:opacity-90 transition"
+              className="px-4 py-2 bg-blue text-white rounded-lg hover:opacity-90"
             >
               View All Recipes
             </button>
