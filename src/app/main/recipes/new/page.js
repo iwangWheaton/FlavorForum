@@ -1,29 +1,41 @@
-"use client"
+"use client";
 import { useState } from "react";
-export default function BrowseRecipes() {
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { addRecipe } from "@/lib/recipeService";
+
+export default function CreateRecipe() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const [isSubmitted, setSubmitted] = useState(false);
   const [recipeData, setRecipe] = useState({
     title: "",
     ingredients: "",
-    instructions: "",
+    instructions: ""
   });
 
   const handleChange = (e) => {
     setRecipe({ ...recipeData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    
+    try {
+      const userId = session?.user?.email || 'anonymous';
+      await addRecipe(recipeData, userId);
+      setSubmitted(true);
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to save recipe");
+    }
   };
 
-  return ( 
-    <div className="flex flex-col items-center justify-center min-h-screen p-8">
-      {!isSubmitted 
-      ? (<form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-4 bg-white shadow-lg p-6 rounded-lg w-full max-w-md">
-          <h2 className="text-2xl text-black font-bold">Write your recipe</h2>
+  return (
+    <div className="p-8">
+      {!isSubmitted ? (
+        <form onSubmit={handleSubmit} className="max-w-md mx-auto">
+          <h2 className="text-2xl font-bold mb-4">Create Recipe</h2>
           
           <input
             type="text"
@@ -32,7 +44,7 @@ export default function BrowseRecipes() {
             onChange={handleChange}
             placeholder="Recipe Title"
             required
-            className="p-2 border rounded text-black"
+            className="w-full p-2 border mb-4 text-black"
           />
           
           <textarea
@@ -41,8 +53,8 @@ export default function BrowseRecipes() {
             onChange={handleChange}
             placeholder="Ingredients"
             required
+            className="w-full p-2 border mb-4 text-black"
             rows="3"
-            className="p-2 border rounded text-black"
           ></textarea>
           
           <textarea
@@ -51,28 +63,28 @@ export default function BrowseRecipes() {
             onChange={handleChange}
             placeholder="Instructions"
             required
+            className="w-full p-2 border mb-4 text-black"
             rows="5"
-            className="p-2 border rounded text-black"
           ></textarea>
           
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="w-full p-2 bg-blue text-white"
           >
-            Submit
+            Submit Recipe
           </button>
         </form>
       ) : (
-        <div className="flex flex-col items-center gap-4">
-          <h2 className="text-2xl font-bold">
-            Thanks for submitting{" "}
-            <span className="text-blue-500">{recipeData.title}</span>!
-          </h2>
-          <button className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-            See Your Recipe
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">Recipe Submitted!</h2>
+          <button 
+            onClick={() => router.push("/main/recipes")}
+            className="mt-4 p-2 bg-red text-white"
+          >
+            View Recipes
           </button>
         </div>
       )}
     </div>
   );
-  }
+}

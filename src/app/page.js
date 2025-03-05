@@ -6,13 +6,27 @@ import { useSession } from "next-auth/react";
 import Button from "@/components/Button";
 import CategorySection from "@/components/CategorySection";
 
+// Mock feed 
+const feed = [
+  {
+    id: 1,
+    user: "Alex",
+    content: "Check out this amazing avocado toast recipe!",
+    image: "/images/avacado.jpg"
+  },
+  {
+    id: 2,
+    user: "Chris",
+    content: "Best hot sauce recommendations? 🔥",
+    image: "/images/sauce.jpg"
+  }
+];
 const category = {
   "id": "quick-meals",
   "name": "Quick Meals",
   "image": "/images/categories/quick-meals.jpg",
   "description": "Ready in 30 minutes or less"
 };
-
 const recipes = [
   {
     "id": "1",
@@ -54,43 +68,48 @@ const recipes = [
     "reviewCount": 65
   }
 ];
-
-// Mock feed 
-const feed = [
-  {
-    id: 1,
-    user: "Alex",
-    content: "Check out this amazing avocado toast recipe!",
-    image: "/images/avacado.jpg"
-  },
-  {
-    id: 2,
-    user: "Chris",
-    content: "Best hot sauce recommendations? 🔥",
-    image: "/images/sauce.jpg"
-  }
-];
-
 // This is the homepage 
 export default function Home() {
   const router = useRouter();
   const { data: session } = useSession();
 
   return (
-    <div className="flex flex-col items-center min-h-screen p-8 gap-6 bg-white">
-      <div className="w-full max-w-6xl text-center my-8">
-        <h1 className="text-5xl font-bold text-black">Welcome to Flavor Forum</h1>
-        <h2 className="text-gray mt-4 text-lg">
-          Find, organize, and share amazing recipes with your community.
-        </h2>
-
-        {/* Quick Meals Section */}
-      <div className="w-full max-w-6xl">
-        <CategorySection 
-          category={category} 
-          recipes={recipes} 
+    <div className="flex flex-col items-center min-h-screen bg-white">
+    <div className="w-full relative">
+      <div className="w-full h-[500px] relative">
+        <Image 
+          src="/images/background.avif"
+          alt="food background"
+          fill
+          priority
+          style={{objectFit: 'cover'}}
+          className="brightness-[0.7]"
         />
+        </div>
+
+        {/* Text overlay */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center z-10">
+          <div className="bg-white/90 p-8 rounded-lg max-w-3xl">
+            <h1 className="text-5xl font-bold text-black">Welcome to Flavor Forum</h1>
+            <p className="text-gray mt-4 text-lg">
+              Find, organize, and share amazing recipes with your community.
+            </p>
+            <div className="flex gap-4 justify-center mt-6">
+              <Button onClick={() => router.push("/login")} className="!bg-blue">
+                Login
+              </Button>
+              <Button onClick={() => router.push("/signup")}>
+                Sign Up
+              </Button>
+          </div>
+        </div>
       </div>
+    <div className="w-full max-w-6xl">
+            <CategorySection 
+              category={category} 
+              recipes={recipes} 
+            />
+          </div>
         {session ? (
           <div className="w-full max-w-6xl mt-6">
             <h2 className="text-3xl font-bold mb-4">Your Feed</h2>
