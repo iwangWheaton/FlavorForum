@@ -13,7 +13,7 @@ export default function Login() {
     if (session) {
       router.push("/main"); // Redirect after login
     }
-  }, [session]);
+  }, [session, router]);
   
   const handleLogin = () => {
     console.log("Logging in with", email, password);

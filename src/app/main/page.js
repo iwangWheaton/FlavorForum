@@ -1,11 +1,17 @@
-import { getSession } from "next-auth/react";
+"use client";
 
-export default async function MainPage() {
-  const session = await getSession();
+import { useSession } from "next-auth/react";
+
+export default function MainPage() {
+  const { data: session } = useSession();
+
+  // get the first name
+  const fullName = session?.user?.name || "Chef";
+  const firstName = fullName.split(' ')[0];
 
   return (
     <main className="p-6">
-      <h1 className="text-3xl font-bold">Welcome Back, {session?.user?.name || "Chef"}! 👨‍🍳</h1>
+      <h1 className="text-3xl font-bold">Welcome Back, {firstName}! 👨‍🍳</h1>
       <p className="text-lg mt-2">Let&apos;s find your next favorite recipe.</p>
 
       {/* Featured Recipes Section */}

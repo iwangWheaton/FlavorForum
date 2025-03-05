@@ -10,8 +10,8 @@ module.exports = {
         red: "#BB4430", 
         blue: "#7EBDC2",
         gray: "#231F20", 
-        background: "#545454",
-        foreground: "#1F2937",
+        background: "#FDF6EE",
+        foreground: "#231F20",
       },
       fontFamily: {
         sans: ['Rufina', "serif"],

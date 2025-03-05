@@ -9,26 +9,26 @@ const Navbar = () => {
   return (
     <nav className="p-4 flex justify-between bg-gray text-white">
       <div className="flex gap-4">
-        <Link href="/">Home</Link>
-        <Link href="/main/recipes">Recipes</Link>
-        <Link href="/main/community">Community</Link>
-        <Link href="/main/profile">Profile</Link>
+        <Link href="/" className="text-white hover:text-blue">Home</Link>
+        <Link href="/main/recipes" className="text-white hover:text-blue">Recipes</Link>
+        <Link href="/main/community" className="text-white hover:text-blue">Community</Link>
+        <Link href="/main/profile" className="text-white hover:text-blue">Profile</Link>
       </div>
       
-      <div className="bg-gray flex gap-4 items-center">
+      <div className="flex gap-4 items-center">
         <Link href="/main/community">
-          <button className="bg-green-500 px-4 py-2 rounded">Join Community</button>
+          <button className="bg-green-500 px-4 py-2 rounded hover:bg-green-600">Join Community</button>
         </Link>
         <Link href="/main/recipes/new">
-          <button className="bg-yellow-500 px-4 py-2 rounded">Create Recipe</button>
+          <button className="bg-yellow-500 px-4 py-2 rounded hover:bg-yellow-600">Create Recipe</button>
         </Link>
         {session ? (
           <>
-            <span className="mr-4">Welcome, {session.user.name}</span>
-            <button onClick={() => signOut()} className="bg-red px-4 py-2 rounded">Logout</button>
+            <span className="mr-4 text-white">Welcome, {session.user.name}</span>
+            <button onClick={() => signOut()} className="bg-red text-white px-4 py-2 rounded hover:opacity-90">Logout</button>
           </>
         ) : (
-          <button onClick={() => signIn()} className="bg-blue px-4 py-2 rounded">Login</button>
+          <button onClick={() => signIn()} className="bg-blue text-gray px-4 py-2 rounded hover:opacity-90">Login</button>
         )}
       </div>
     </nav>
