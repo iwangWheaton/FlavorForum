@@ -80,9 +80,10 @@ export default function Home() {
     <div className="flex flex-col items-center min-h-screen p-8 gap-6 bg-white">
       <div className="w-full max-w-6xl text-center my-8">
         <h1 className="text-5xl font-bold text-black">Welcome to Flavor Forum</h1>
-        <p className="text-gray mt-4 text-lg">
+        <h2 className="text-gray mt-4 text-lg">
           Find, organize, and share amazing recipes with your community.
-        </p>
+        </h2>
+
         {/* Quick Meals Section */}
       <div className="w-full max-w-6xl">
         <CategorySection 

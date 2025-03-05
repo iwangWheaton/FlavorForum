@@ -2,10 +2,8 @@
 import { useState } from "react";
 
 export default function CommunityFeed() {
-  const [recipes, setRecipes] = useState([]);
   const [sort, setSort] = useState("hot");
 
-  // Sample recipes
   const sampleRecipes = [
     { id: "101", title: "Avocado Toast", description: "A healthy start to your day.", community: "Healthy Eats" },
     { id: "102", title: "Spicy Chicken Wings", description: "Extra hot and delicious!", community: "Spicy Lovers" },

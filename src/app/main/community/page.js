@@ -1,9 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSession } from "next-auth/react";
-import Link from "next/link";
-import { Button } from "@mui/material";
+import Button from "@/components/Button";
+
+const sampleCommunities = [
+  { id: "1", name: "Healthy Eats", location: "Chicago, IL" },
+  { id: "2", name: "Spicy Lovers", location: "New York, NY" },
+  { id: "3", name: "Baking Masters", location: "Los Angeles, CA" },
+];
 
 export default function JoinCommunity() {
   const router = useRouter();
@@ -12,22 +16,17 @@ export default function JoinCommunity() {
   const [loading, setLoading] = useState(true);
   const [locationDenied, setLocationDenied] = useState(false);
   
-  const sampleCommunities = [
-    { id: "1", name: "Healthy Eats", location: "Chicago, IL" },
-    { id: "2", name: "Spicy Lovers", location: "New York, NY" },
-    { id: "3", name: "Baking Masters", location: "Los Angeles, CA" },
-  ];
+
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          // Replace this with an API call to get nearby communities later
           console.log("Detected Location:", position.coords);
           setCommunities(sampleCommunities);
         },
         () => {
           setLocationDenied(true);
-          setCommunities(sampleCommunities); // Use sample data if denied
+          setCommunities(sampleCommunities); 
         }
       );
     } else {
@@ -35,6 +34,8 @@ export default function JoinCommunity() {
       setCommunities(sampleCommunities);
     }
   }, []);
+  
+  //for when we use databases
   // useEffect(() => {
   //   navigator.geolocation.getCurrentPosition(
   //     async (position) => {

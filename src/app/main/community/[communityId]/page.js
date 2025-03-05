@@ -1,6 +1,6 @@
 "use client";
 import { useSession } from "next-auth/react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Button from "@/components/Button";
 import Image from "next/image";
@@ -8,10 +8,9 @@ import Image from "next/image";
 export default function CommunityPage({ params }) {
   const { data: session } = useSession();
   const router = useRouter();
-  const { id } = useParams();
   const [joined, setJoined] = useState(false);
-
   const [communityId, setCommunityId] = useState(null);
+  
   useEffect(() => {
     async function fetchParams() {
       const resolvedParams = await params;
@@ -66,7 +65,7 @@ export default function CommunityPage({ params }) {
       return;
     }
     setJoined(true);
-    alert(`Joined ${community.name}!`); // Replace with API call later
+    // alert(`Joined ${community.name}!`); Replace with API call later
   };
 
   return (

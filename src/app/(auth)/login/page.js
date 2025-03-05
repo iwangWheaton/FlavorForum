@@ -14,9 +14,9 @@ export default function Login() {
 
   useEffect(() => {
     if (session) {
-      router.push("/main"); // Redirect after login
+      router.push(redirectTo); // Redirect after login
     }
-  }, [session]);
+  }, [session, router, redirectTo]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -50,7 +50,7 @@ export default function Login() {
       <button onClick={handleLogin} className="bg-blue text-white p-2 mt-2 w-64">
         Login
       </button>
-      <button onClick={() => signIn("google")} className="bg-red text-white p-2 mt-2 w-64">
+      <button onClick={() => signIn("google", { callbackUrl: redirectTo })} className="bg-red text-white p-2 mt-2 w-64">
         Sign in with Google
       </button>
     </div>
