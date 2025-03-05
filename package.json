@@ -1,5 +1,5 @@
 {
-  "name": "flavor_forum",
+  "name": "post-site",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -27,6 +27,7 @@
     "fuse.js": "^7.1.0",
     "graphql": "^15.10.1",
     "mongoose": "^8.10.0",
+    "multer": "^1.4.5-lts.1",
     "natural": "^8.0.1",
     "next": "15.1.6",
     "next-auth": "^4.24.11",
@@ -45,5 +46,18 @@
     "@tailwindcss/postcss": "^4.0.9",
     "eslint": "^9",
     "eslint-config-next": "15.1.6"
-  }
+  },
+  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).",
+  "main": "postcss.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iwangWheaton/FlavorForum.git"
+  },
+  "keywords": [],
+  "author": "SDS",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/iwangWheaton/FlavorForum/issues"
+  },
+  "homepage": "https://github.com/iwangWheaton/FlavorForum#readme"
 }
