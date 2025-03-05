@@ -14,7 +14,7 @@ export default function RootLayout({ children }) {
       <html lang="en">
         <body className="antialiased">
           <Navbar /> 
-          <main className="flex-grow p-6">{children}</main>
+          <main className="flex-grow">{children}</main>
         </body>
       </html>
     </ClientSessionProvider>
