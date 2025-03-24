@@ -1,23 +1,30 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { addRecipe } from "@/lib/recipeService";
+import { uploadRecipeImage } from "@/lib/uploadService";
+import Image from "next/image";
 
 export default function CreateRecipe() {
   const { data: session } = useSession();
   const router = useRouter();
   const [isSubmitted, setSubmitted] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewImage, setPreviewImage] = useState(null);
+  const fileInputRef = useRef(null); 
+
   const [recipeData, setRecipe] = useState({
     title: "",
     notes: "",
     cookingTime: 30,
     difficulty: "Medium",
-    mealType: "Main Course",
+    mealType: "Main Course", 
     ingredients: "",
     instructions: "",
     dietaryOptions: [],
-    image: "/images/background.avif"
+    image: null,
+    imageUrl: "/images/background.avif"
   });
 
   const dietaryOptions = ["Gluten-Free", "Dairy-Free", "Vegan", "Vegetarian"];
@@ -26,6 +33,30 @@ export default function CreateRecipe() {
 
   const handleChange = (e) => {
     setRecipe({ ...recipeData, [e.target.name]: e.target.value });
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+
+    if(file) {
+      if(!file.type.match('image.*')) {
+        alert("Please upload an image file");
+        return;
+      }
+
+      if(file.size > 1024 * 1024 * 5) {
+        alert("Image size must be less than 5MB");
+        return;
+      }
+
+      setRecipe({...recipeData, image: file});
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewImage(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleDietaryToggle = (restriction) => {
@@ -43,14 +74,29 @@ export default function CreateRecipe() {
     e.preventDefault();
     
     try {
-      // placeholder image
+      const userId = session?.user?.id || 'anonymous';
+      let imageUrl = recipeData.imageUrl;
+      
+      //  image
+      if(recipeData.image) {
+        setUploadProgress(0);
+
+        // generate a temporary ID for the recipe folder
+        const tempRecipeId = `${userId}-${Date.now()}`;
+        imageUrl = await uploadRecipeImage(
+          recipeData.image,
+          userId,
+          tempRecipeId,
+          (progress) => setUploadProgress(progress)
+        );
+      }
+
       const recipeToSubmit = {
         ...recipeData,
-        image: "/images/background.avif",
+        imageUrl: imageUrl,
       };
 
-      const userId = session?.user?.email || 'anonymous';
-      await addRecipe(recipeData, userId);
+      await addRecipe(recipeToSubmit, userId);
       setSubmitted(true);
     } catch (error) {
       console.error("Error:", error);
@@ -65,6 +111,71 @@ export default function CreateRecipe() {
           <h2 className="text-2xl font-bold mb-6 text-gray">Create Your Recipe</h2>
           
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* image upload */}
+            <div>
+              <label className="block text-gray mb-2">Recipe Image</label>
+              <div className="flex flex-col items-center">
+                {previewImage ? (
+                  <div className="relative w-full h-64 mb-4">
+                    <Image
+                      src = {previewImage}
+                      alt = "recipe preview"
+                      fill
+                      className = "rounded-lg object-cover"
+                      />
+                </div>
+                ) : (
+                  <div className = "w-full h-64 bg-gray/10 rounded-lg flex items-center justify-center mb-4">
+                    <p className = "text-gray/50">No image selected</p>    
+                  </div>
+                  )}
+                
+                <div className = "flex gap-4">
+                  <button
+                    type = "button"
+                    onClick = {() => fileInputRef.current.click()}
+                    className = "px-4 py-2 bg-blue text-white rounded-lg hover:opacity-90"
+                    >
+                      {previewImage ? "Change Image" : "Select Image"}
+                    </button>
+
+                    {previewImage && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewImage(null);
+                        setRecipe({ ...recipeData, image: null });
+                      }}
+                      className="px-4 py-2 bg-red text-white rounded-lg hover:opacity-90"
+                    >
+                      Remove Image
+                    </button>
+                    )}
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="w-full mt-4">
+                    <div className="h-2 bg-gray/20 rounded-full">
+                      <div 
+                        className="h-full bg-blue rounded-full"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-gray/70 mt-1">
+                      Uploading: {Math.round(uploadProgress)}%
+                    </p>
+                  </div>
+                )}
+                </div>
+            </div>
 
             {/* title */}
             <div>
