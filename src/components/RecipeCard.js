@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 const RecipeCard = ({ recipe }) => {
-  const imageUrl = recipe.image || "/images/background.avif";
+  const imageUrl = recipe.imageUrl || "/images/background.avif";
   
   return (
     <Link href={`/recipes/${recipe.id}`}>

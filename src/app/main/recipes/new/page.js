@@ -4,7 +4,10 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { addRecipe } from "@/lib/recipeService";
 import { uploadRecipeImage } from "@/lib/uploadService";
+import { getUserId } from "@/lib/userService";
 import Image from "next/image";
+import { auth } from "@/lib/firebase";
+import { useEffect } from "react";
 
 export default function CreateRecipe() {
   const { data: session } = useSession();
@@ -13,6 +16,11 @@ export default function CreateRecipe() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null); 
+
+  // testing authentication
+  useEffect(() => {
+    console.log("Firebase Auth current user:", auth.currentUser);
+    }, []);
 
   const [recipeData, setRecipe] = useState({
     title: "",
@@ -72,9 +80,15 @@ export default function CreateRecipe() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    console.log("Session data:", session);
     
     try {
-      const userId = session?.user?.id || 'anonymous';
+      let userId = 'anonymous';
+      if(session?.user?.email) {
+        userId = await getUserId(session.user.email);
+      }
+
       let imageUrl = recipeData.imageUrl;
       
       //  image
