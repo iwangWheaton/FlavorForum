@@ -17,11 +17,6 @@ export default function CreateRecipe() {
   const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null); 
 
-  // testing authentication
-  useEffect(() => {
-    console.log("Firebase Auth current user:", auth.currentUser);
-    }, []);
-
   const [recipeData, setRecipe] = useState({
     title: "",
     notes: "",
