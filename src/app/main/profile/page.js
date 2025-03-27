@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
@@ -8,7 +9,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
 import Button from "@/components/Button";
 
-export default function ProfilePage() {
+export default function Profile() {
   const { data: session } = useSession();
   const [userData, setUserData] = useState({
     firstName: "",
@@ -168,6 +169,18 @@ export default function ProfilePage() {
         >
           {loading ? "Saving..." : "Save Changes"}
         </Button>
+      </div>
+      <div className = "p-6">
+      <h1 className="text-2xl font-bold">Your Profile</h1>
+      <p>View and manage your account details.</p>
+      
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <Link href="/main/profile/boards">
+          <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition cursor-pointer">
+            <h2 className="text-xl font-semibold">My Recipe Boards</h2>
+            <p className="text-gray/70">Organize your saved recipes</p>
+          </div>
+        </Link>
       </div>
     </div>
   );
