@@ -105,6 +105,7 @@ export default function Profile() {
             onChange={handleImageUpload}
             className="mt-2"
           />
+          
         </div>
       </div>
 
@@ -182,6 +183,7 @@ export default function Profile() {
           </div>
         </Link>
       </div>
+    </div>
     </div>
   );
 }
