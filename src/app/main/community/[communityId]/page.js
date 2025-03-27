@@ -1,62 +1,95 @@
 "use client";
+
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Button from "@/components/Button";
 import Image from "next/image";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { use } from "react";
 
 export default function CommunityPage({ params }) {
+  const resolvedParams = use(params); // Unwrap the params Promise
+  const communityId = resolvedParams.communityId; // Access the unwrapped communityId
   const { data: session } = useSession();
   const router = useRouter();
   const [joined, setJoined] = useState(false);
-  const [communityId, setCommunityId] = useState(null);
-  
-  useEffect(() => {
-    async function fetchParams() {
-      const resolvedParams = await params;
-      setCommunityId(resolvedParams.communityId);
-    }
-    fetchParams();
-  }, [params]);
+  const [community, setCommunity] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Sample community data
-  const sampleCommunities = {
-    "1": {
-      name: "Healthy Eats",
-      description: "A place for nutritious and delicious meals.",
-      image: "/images/spicy.jpg",
-      members: 3421,
-      posts: [
-        { id: 1, user: "Alex", content: "Check out this amazing avocado toast recipe!" },
-        { id: 2, user: "Jamie", content: "Anyone have a good meal prep plan for the week?" },
-      ],
-    },
-    "2": {
-      name: "Spicy Lovers",
-      description: "For those who love an extra kick in their food.",
-      image: "/images/spicy.jpg",
-      members: 1876,
-      posts: [
-        { id: 1, user: "Chris", content: "Best hot sauce recommendations? 🔥" },
-        { id: 2, user: "Jordan", content: "Just made a super spicy ramen, want the recipe?" },
-      ],
-    },
-    "3": {
-      name: "Baking Masters",
-      description: "For passionate bakers sharing their best recipes.",
-      image: "/images/bake.png",
-      members: 2500,
-      posts: [
-        { id: 1, user: "Taylor", content: "This chocolate lava cake recipe is a must-try!" },
-        { id: 2, user: "Morgan", content: "What’s your favorite gluten-free flour brand?" },
-      ],
-    },
+  // Fetch community data from Firestore
+  useEffect(() => {
+    if (communityId) {
+      const fetchCommunity = async () => {
+        setLoading(true);
+        try {
+          const docRef = doc(db, "communities", communityId);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setCommunity({ id: docSnap.id, ...docSnap.data() }); // Includes the `image` field
+          } else {
+            console.error("No such community exists.");
+          }
+        } catch (error) {
+          console.error("Error fetching community:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchCommunity();
+    }
+  }, [communityId]);
+
+  // Handle image upload
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+  
+    try {
+      // Ensure the user is authenticated
+      if (!session) {
+        console.error("User is not authenticated.");
+        return;
+      }
+  
+      const storage = getStorage();
+      const storageRef = ref(storage, `images/${communityId}/${file.name}`);
+      console.log("Uploading file to path:", storageRef.fullPath);
+  
+      // Upload the file to Firebase Storage
+      const snapshot = await uploadBytes(storageRef, file);
+      console.log("Uploaded a file:", snapshot);
+  
+      // Get the download URL for the uploaded file
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log("File available at:", downloadURL);
+  
+      // Save the download URL to Firestore
+      const communityRef = doc(db, "communities", communityId);
+      await setDoc(
+        communityRef,
+        { image: downloadURL }, // Add or update the `image` field
+        { merge: true } // Merge with existing data
+      );
+  
+      // Update the community state with the new image URL
+      setCommunity((prev) => ({ ...prev, image: downloadURL }));
+      console.log("Image URL saved to Firestore!");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+    }
   };
 
-  const community = sampleCommunities[communityId];
+  if (loading || !community) {
+    return <h1 className="text-gray-500 p-6">Loading...</h1>; 
+  }
+  
 
   if (!community) {
-    return <p className="text-red-500 p-6">Community not found.</p>;
+    return <h1 className="text-red-500 p-6">Community not found.</h1>;
   }
 
   const handleJoin = () => {
@@ -65,14 +98,19 @@ export default function CommunityPage({ params }) {
       return;
     }
     setJoined(true);
-    // alert(`Joined ${community.name}!`); Replace with API call later
   };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* Community Banner */}
       <div className="relative w-full h-64">
-        <Image src={community.image} alt={community.name} layout="fill" objectFit="cover" className="rounded-lg" />
+        <Image
+          src={community.image || "/images/placeholder.jpg"} // Use placeholder if no image
+          alt={community.name || "Community Image"}
+          layout="fill"
+          objectFit="cover"
+          className="rounded-lg"
+        />
         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <h1 className="text-4xl font-bold text-white">{community.name}</h1>
         </div>
@@ -82,7 +120,7 @@ export default function CommunityPage({ params }) {
       <div className="mt-6 flex justify-between items-center bg-white p-6 rounded-lg shadow-md">
         <div>
           <h2 className="text-gray-700 text-xl">{community.description}</h2>
-          <h2 className="text-gray-600">{community.members.toLocaleString()} members</h2>
+          <h2 className="text-gray-600">{community.numMembers} members</h2>
         </div>
         <Button
           onClick={handleJoin}
@@ -93,19 +131,10 @@ export default function CommunityPage({ params }) {
         </Button>
       </div>
 
-      {/* Community Feed */}
+      {/* Image Upload Section */}
       <div className="mt-6">
-        <h2 className="text-xl font-semibold mb-4">Recent Posts</h2>
-        {community.posts.length > 0 ? (
-          community.posts.map((post) => (
-            <div key={post.id} className="bg-white p-4 mb-4 rounded-lg shadow-md">
-              <h1 className="text-gray-900 font-semibold">{post.user}</h1>
-              <h2 className="text-gray-700">{post.content}</h2>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500">No posts yet. Be the first to share something!</p>
-        )}
+        <h2 className="text-xl font-semibold mb-4">Upload a New Image</h2>
+        <input type="file" onChange={handleImageUpload} />
       </div>
     </div>
   );
