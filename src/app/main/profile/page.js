@@ -174,7 +174,6 @@ export default function Profile() {
       </div>
       <div className = "p-6">
       <h1 className="text-2xl font-bold">Your Profile</h1>
-      <p>View and manage your account details.</p>
       
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <Link href="/main/profile/boards">
