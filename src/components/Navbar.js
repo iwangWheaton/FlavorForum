@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
+import SignInModal from "./SignInModal";
 
 const Navbar = () => {
   const { data: session } = useSession();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <nav className="p-4 flex justify-between bg-gray text-white">
@@ -31,6 +34,7 @@ const Navbar = () => {
           <button onClick={() => signIn()} className="bg-blue text-gray px-4 py-2 rounded hover:opacity-90">Login</button>
         )}
       </div>
+      {isModalOpen && <SignInModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />}
     </nav>
   );
 };
