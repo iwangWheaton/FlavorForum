@@ -3,6 +3,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import StarComp from "@/app/main/reviews/StarRating/starComp";
 
 const RecipeCard = ({ recipe }) => {
   const imageUrl = recipe.imageUrl || "/images/background.avif";
@@ -22,11 +23,13 @@ const RecipeCard = ({ recipe }) => {
           <div className="flex justify-between items-start">
             <h3 className="text-lg text-black">{recipe.title}</h3>
             <div className="flex items-center">
-              <span className="text-yellow-500">★</span>
-              <span className="ml-1 text-sm text-black">{recipe.averageRating || "No ratings"}</span>
+              <StarComp>
+                onClick={() => handleClick(index + 1)}
+                onMouseEnter={() => setTemporaryRating(index + 1)}
+                onMouseLeave={() => setTemporaryRating(0)}
+           </StarComp>
             </div>
           </div>
-          
           <div className="mt-2 flex justify-between text-sm text-gray">
             <div>
               <span>{recipe.cookingTime || "-"} mins</span>

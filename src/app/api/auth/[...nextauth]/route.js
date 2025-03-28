@@ -1,6 +1,8 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google"; // Example provider
+import { signInWithEmailAndPassword } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 
 export const authOptions = {
   providers: [
@@ -15,14 +17,30 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // Your authentication logic here (e.g., check user in database)
-        if (credentials.email === "test@example.com" && credentials.password === "password") {
-          return { id: "1", name: "Test User", email: credentials.email };
+        try {
+          const userCredential = await signInWithEmailAndPassword(
+            auth,
+            credentials.email,
+            credentials.password
+          );
+          const user = userCredential.user;
+          return { id: user.uid, name: user.displayName, email: user.email };
+        } catch (error) {
+          throw new Error("Invalid email or password");
         }
-        return null;
       },
     }),
   ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) token.uid = user.id;
+      return token;
+    },
+    async session({ session, token }) {
+      session.user.uid = token.uid;
+      return session;
+    },
+  },
   pages: {
     signIn: "/login", // Ensure this matches your login page route
   },
