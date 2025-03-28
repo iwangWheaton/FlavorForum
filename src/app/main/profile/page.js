@@ -171,8 +171,7 @@ export default function Profile() {
           {loading ? "Saving..." : "Save Changes"}
         </Button>
       </div>
-      <div className = "p-6">
-      <h1 className="text-2xl font-bold">Your Profile</h1>
+
       
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <Link href="/main/profile/boards">
@@ -182,7 +181,6 @@ export default function Profile() {
           </div>
         </Link>
       </div>
-    </div>
     </div>
   );
 }
