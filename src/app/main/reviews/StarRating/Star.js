@@ -6,7 +6,7 @@ import "./stars.css";
 import { useState } from "react";
 
 const DEFAULT_COUNT = 5;
-const DEFAULT_ICON = "★";
+const DEFAULT_ICON = "🍔";
 const DEFAULT_UNSELECTED_COLOR = "grey";
 const DEFAULT_COLOR = "yellow";
 
