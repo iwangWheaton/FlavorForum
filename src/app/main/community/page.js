@@ -68,7 +68,8 @@ export default function JoinCommunity() {
   };
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="bg-background">
+    <div className="container mx-auto p-4 bg-background">
       <h1 className="text-2xl font-bold">Join a Community</h1>
       {locationDenied && (
         <p className="text-red-500 mt-2">Location access denied. Showing all communities.</p>
@@ -101,6 +102,7 @@ export default function JoinCommunity() {
           ))}
         </ul>
       )}
+    </div>
     </div>
   );
 }

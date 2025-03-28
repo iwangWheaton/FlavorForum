@@ -2,39 +2,123 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useSession, signIn, signOut } from "next-auth/react";
-import SignInModal from "./SignInModal";
+import { useRouter } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
+import Image from "next/image";
 
 const Navbar = () => {
   const { data: session } = useSession();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const router = useRouter();
+
+  // Prep for Algolia search
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+
+  const handleResultClick = (objectID) => {
+    router.push(`/recipes/${objectID}`);
+  };
 
   return (
-    <nav className="p-4 flex justify-between bg-gray text-white">
-      <div className="flex gap-4">
-        <Link href="/" className="text-white hover:text-blue">Home</Link>
-        <Link href="/main/recipes" className="text-white hover:text-blue">Recipes</Link>
-        <Link href="/main/community" className="text-white hover:text-blue">Community</Link>
-        <Link href="/main/profile" className="text-white hover:text-blue">Profile</Link>
-      </div>
-      
-      <div className="flex gap-4 items-center">
-        <Link href="/main/community">
-          <button className="bg-green-500 px-4 py-2 rounded hover:bg-green-600">Join Community</button>
+    <nav className="p-4 bg-black text-white">
+      {/* Top Level Navbar */}
+      <div className="flex justify-between items-center p-4">
+        {/* Website Title */}
+        <Link href="/">
+          <h1 className="text-2xl font-bold text-yellow-400 cursor-pointer">
+            FlavorForum
+          </h1>
         </Link>
-        <Link href="/main/recipes/new">
-          <button className="bg-yellow-500 px-4 py-2 rounded hover:bg-yellow-600">Create Recipe</button>
-        </Link>
-        {session ? (
-          <>
-            <span className="mr-4 text-white">Welcome, {session.user.name}</span>
-            <button onClick={() => signOut()} className="bg-red text-white px-4 py-2 rounded hover:opacity-90">Logout</button>
-          </>
-        ) : (
-          <button onClick={() => signIn()} className="bg-blue text-gray px-4 py-2 rounded hover:opacity-90">Login</button>
-        )}
+
+        {/* Search Bar */}
+        <div className="relative w-1/2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search for recipes..."
+            className="w-full border rounded-lg p-2 text-black"
+          />
+          {results.length > 0 && (
+            <div className="absolute bg-white border rounded-lg shadow-md mt-2 w-full max-h-60 overflow-y-auto">
+              {results.map((result) => (
+                <div
+                  key={result.objectID}
+                  className="p-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleResultClick(result.objectID)}
+                >
+                  <p className="text-sm font-bold">{result.title}</p>
+                  <p className="text-xs text-gray-500">{result.cuisine || "Unknown Cuisine"}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Profile/Login Button */}
+        <div
+          className="relative"
+          onMouseEnter={() => setIsDropdownOpen(true)}
+          onMouseLeave={() => setIsDropdownOpen(false)}
+        >
+          {session ? (
+            <div className="flex items-center gap-2 cursor-pointer p-3 hover:bg-gray-800 rounded">
+              {/* Use Google profile picture */}
+              <Image
+                src={session.user.image}
+                alt="Profile"
+                width={32}
+                height={32}
+                className="rounded-full border border-gray-300"
+              />
+              <span>{session.user.name}</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => router.push("/login")}
+              className="flex items-center gap-2 bg-blue-500 px-4 py-2 rounded hover:bg-blue-600"
+            >
+              Login
+            </button>
+          )}
+          {isDropdownOpen && session && (
+            <div className="absolute right-0 mt-2 bg-white text-black rounded-lg shadow-lg w-40 p-2">
+              <Link href="/main/profile">
+                <div className="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                  Go to Profile
+                </div>
+              </Link>
+              <div
+                className="p-2 hover:bg-gray-100 rounded cursor-pointer"
+                onClick={() => signOut()}
+              >
+                Logout
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-      {isModalOpen && <SignInModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />}
+
+      {/* Second Level Navbar */}
+      <div className="bg-gray-700 p-2">
+        <div className="flex justify-center gap-8">
+        <Link href="/" className="hover:text-yellow-400">
+            Home
+          </Link>
+          <Link href="/main/recipes" className="hover:text-yellow-400">
+            Recipes
+          </Link>
+          <Link href="/main/community" className="hover:text-yellow-400">
+            Communities
+          </Link>
+          <Link href="/main/recipes/new" className="hover:text-yellow-400">
+            Create recipe
+          </Link>
+          <Link href="/main/profile" className="hover:text-yellow-400">
+            Profile
+          </Link>
+        </div>
+      </div>
     </nav>
   );
 };

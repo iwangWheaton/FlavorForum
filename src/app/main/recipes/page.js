@@ -35,7 +35,7 @@ export default function RecipesPage() {
   const quickRecipes = recipes.filter((recipe) => recipe.dietaryOptions && recipe.cookingTime < 30);
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 md:p-8 bg-background">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gluten-Free Favorites</h1>
         <Link href="/main/recipes/new">

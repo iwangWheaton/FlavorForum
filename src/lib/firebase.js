@@ -18,7 +18,6 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 // const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
-const analytics = getAnalytics(app);
 const storage = getStorage(app);
 
 
