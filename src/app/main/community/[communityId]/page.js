@@ -101,7 +101,8 @@ export default function CommunityPage({ params }) {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="bg-background">
+    <div className="p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-md">
       {/* Community Banner */}
       <div className="relative w-full h-64">
         <Image
@@ -136,6 +137,7 @@ export default function CommunityPage({ params }) {
         <h2 className="text-xl font-semibold mb-4">Upload a New Image</h2>
         <input type="file" onChange={handleImageUpload} />
       </div>
+    </div>
     </div>
   );
 }

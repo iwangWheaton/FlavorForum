@@ -27,7 +27,7 @@ export default function Home() {
   const { data: session } = useSession();
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-white">
+    <div className="flex flex-col items-center min-h-screen bg-background">
       <div className="w-full relative">
         {!session && (
           <div className="w-full h-[800px] relative">
@@ -60,7 +60,7 @@ export default function Home() {
       </div>
 
       {session && (
-        <div className="w-full h-full max-w-6xl mt-6">
+        <div className="w-full h-full max-w-6xl mt-6 bg-background">
           <h2 className="text-3xl font-bold mb-4">Your Feed</h2>
           {feed.map((post) => (
             <div key={post.id} className="bg-white p-4 mb-4 rounded-lg shadow-md">

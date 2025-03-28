@@ -12,8 +12,11 @@ export default function RootLayout({ children }) {
   return (
     <ClientSessionProvider>
       <html lang="en">
-        <body className="antialiased">
-          <Navbar /> 
+        <body
+          className="antialiased"
+          style={{ backgroundColor: "#FDF6EE" }} // Set the background color here
+        >
+          <Navbar />
           <main className="flex-grow">{children}</main>
         </body>
       </html>

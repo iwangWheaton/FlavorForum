@@ -82,6 +82,7 @@ export default function Profile() {
   };
 
   return (
+    <div className="bg-background">
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-4">Your Profile</h1>
 
@@ -183,6 +184,7 @@ export default function Profile() {
           </div>
         </Link>
       </div>
+    </div>
     </div>
     </div>
   );
