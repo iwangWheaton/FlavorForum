@@ -20,14 +20,12 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="p-4 bg-black text-white">
+    <nav className="text-orange">
       {/* Top Level Navbar */}
       <div className="flex justify-between items-center p-4">
         {/* Website Title */}
         <Link href="/">
-          <h1 className="text-2xl font-bold text-yellow-400 cursor-pointer">
-            FlavorForum
-          </h1>
+          <Image alt="logo" src="/images/FlavorForum.png" width={200} height={70} />
         </Link>
 
         {/* Search Bar */}
@@ -37,7 +35,7 @@ const Navbar = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search for recipes..."
-            className="w-full border rounded-lg p-2 text-black"
+            className="w-full border rounded-lg p-2 text-gray/30"
           />
           {results.length > 0 && (
             <div className="absolute bg-white border rounded-lg shadow-md mt-2 w-full max-h-60 overflow-y-auto">
@@ -100,21 +98,21 @@ const Navbar = () => {
       </div>
 
       {/* Second Level Navbar */}
-      <div className="bg-gray-700 p-2">
-        <div className="flex justify-center gap-8">
-        <Link href="/" className="hover:text-yellow-400">
+      <div className="p-2 mt-2 flex justify-center">
+        <div className="bg-gray/10 inline-flex px-8 py-3 rounded-full gap-8">
+        <Link href="/" className="hover:text-gray">
             Home
           </Link>
-          <Link href="/main/recipes" className="hover:text-yellow-400">
+          <Link href="/main/recipes" className="hover:text-gray">
             Recipes
           </Link>
-          <Link href="/main/community" className="hover:text-yellow-400">
+          <Link href="/main/community" className="hover:text-gray">
             Communities
           </Link>
-          <Link href="/main/recipes/new" className="hover:text-yellow-400">
+          <Link href="/main/recipes/new" className="hover:text-gray">
             Create recipe
           </Link>
-          <Link href="/main/profile" className="hover:text-yellow-400">
+          <Link href="/main/profile" className="hover:text-gray">
             Profile
           </Link>
         </div>

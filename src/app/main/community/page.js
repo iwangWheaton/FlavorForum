@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@mui/material";
 import { db } from "../../../lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import Button from "@/components/Button";
 
 export default function JoinCommunity() {
   const router = useRouter();
@@ -89,9 +89,9 @@ export default function JoinCommunity() {
       ) : (
         <ul className="mt-4">
           {communities.map((community) => (
-            <li key={community.id} className="p-4 border rounded mb-2">
+            <li key={community.id} className="bg-white p-4 border rounded mb-2">
               <h2 className="text-lg font-semibold">{community.name}</h2>
-              <p className="text-gray-600">{community.location}</p>
+              <p className="text-gray">{community.location}</p>
               <Button
                 onClick={() => router.push(`/main/community/${community.id}`)}
                 className="bg-green-500 text-white p-2 rounded mt-2"
