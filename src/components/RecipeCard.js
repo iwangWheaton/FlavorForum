@@ -24,7 +24,7 @@ const RecipeCard = ({ recipe }) => {
             <h3 className="text-lg text-black">{recipe.title}</h3>
             <div className="flex items-center">
               <StarComp>
-                onClick={() => handleClick(index + 1)}
+              onClick={(e) => handleClick(index + 1, e)}
                 onMouseEnter={() => setTemporaryRating(index + 1)}
                 onMouseLeave={() => setTemporaryRating(0)}
            </StarComp>
