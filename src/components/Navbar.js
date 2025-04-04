@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
+import { FaUserCircle } from "react-icons/fa"; // Default profile icon
 
 const Navbar = () => {
   const { data: session } = useSession();
@@ -15,12 +16,26 @@ const Navbar = () => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".profile-dropdown")) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
+
   const handleResultClick = (objectID) => {
     router.push(`/recipes/${objectID}`);
   };
 
   return (
-    <nav className="p-4 bg-black text-white">
+    <nav className="p-4 bg-gray text-white">
       {/* Top Level Navbar */}
       <div className="flex justify-between items-center p-4">
         {/* Website Title */}
@@ -56,21 +71,26 @@ const Navbar = () => {
         </div>
 
         {/* Profile/Login Button */}
-        <div
-          className="relative"
-          onMouseEnter={() => setIsDropdownOpen(true)}
-          onMouseLeave={() => setIsDropdownOpen(false)}
-        >
+        <div className="relative profile-dropdown hover:bg-gray">
           {session ? (
-            <div className="flex items-center gap-2 cursor-pointer p-3 hover:bg-gray-800 rounded">
-              {/* Use Google profile picture */}
-              <Image
-                src={session.user.image}
-                alt="Profile"
-                width={32}
-                height={32}
-                className="rounded-full border border-gray-300"
-              />
+            <div
+              className={`flex items-center gap-2 cursor-pointer p-2 rounded ${
+                isDropdownOpen ? "bg-gray-800" : "hover:bg-gray-800"
+              }`}
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              {/* Use Google profile picture or default icon */}
+              {session.user.image ? (
+                <Image
+                  src={session.user.image}
+                  alt="Profile"
+                  width={32}
+                  height={32}
+                  className="rounded-full border border-gray-300"
+                />
+              ) : (
+                <FaUserCircle size={32} className="text-gray-300" />
+              )}
               <span>{session.user.name}</span>
             </div>
           ) : (
@@ -102,7 +122,7 @@ const Navbar = () => {
       {/* Second Level Navbar */}
       <div className="bg-gray-700 p-2">
         <div className="flex justify-center gap-8">
-        <Link href="/" className="hover:text-yellow-400">
+          <Link href="/" className="hover:text-yellow-400">
             Home
           </Link>
           <Link href="/main/recipes" className="hover:text-yellow-400">

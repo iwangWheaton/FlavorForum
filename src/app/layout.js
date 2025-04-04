@@ -1,4 +1,3 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import "./global.css";
 import Navbar from "@/components/Navbar";
 import ClientSessionProvider from "./ClientSessionProvider";
@@ -12,11 +11,8 @@ export default function RootLayout({ children }) {
   return (
     <ClientSessionProvider>
       <html lang="en">
-        <body
-          className="antialiased"
-          style={{ backgroundColor: "#FDF6EE" }} // Set the background color here
-        >
-          <Navbar />
+        <body className="antialiased bg-background">
+          <Navbar /> 
           <main className="flex-grow">{children}</main>
         </body>
       </html>
