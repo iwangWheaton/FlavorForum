@@ -96,7 +96,7 @@ export default function Profile() {
           className="rounded-full"
         />
         <div>
-          <label htmlFor="profileImage" className="block font-semibold">
+          <label htmlFor="profileImage" className="block font-semibold, text-black">
             Change Profile Image:
           </label>
           <input
@@ -114,7 +114,7 @@ export default function Profile() {
       <form className="mt-6 space-y-4">
         {/* First Name */}
         <div>
-          <label htmlFor="firstName" className="block font-semibold">
+          <label htmlFor="firstName" className="block font-semibold, text-black">
             First Name:
           </label>
           <input
@@ -130,7 +130,7 @@ export default function Profile() {
 
         {/* Last Name */}
         <div>
-          <label htmlFor="lastName" className="block font-semibold">
+          <label htmlFor="lastName" className="block font-semibold, text-black">
             Last Name:
           </label>
           <input
@@ -146,7 +146,7 @@ export default function Profile() {
 
         {/* Birthday */}
         <div>
-          <label htmlFor="birthday" className="block font-semibold">
+          <label htmlFor="birthday" className="block font-semibold, text-black">
             Birthday:
           </label>
           <input
@@ -172,8 +172,7 @@ export default function Profile() {
           {loading ? "Saving..." : "Save Changes"}
         </Button>
       </div>
-      <div className = "p-6">
-      <h1 className="text-2xl font-bold">Your Profile</h1>
+
       
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <Link href="/main/profile/boards">
@@ -183,8 +182,7 @@ export default function Profile() {
           </div>
         </Link>
       </div>
-    </div>
-    </div>
+      </div>
     </div>
   );
 }

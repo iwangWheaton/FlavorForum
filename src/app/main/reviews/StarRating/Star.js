@@ -1,4 +1,5 @@
 // src/components/RecipePage.js
+//https://github.com/alekspopovic/star-rating/tree/main/src
 "use client";
 
 
@@ -16,7 +17,8 @@ export default function Stars({ count, defaultRating, icon, color, iconSize }) {
 
   let stars = Array(count || DEFAULT_COUNT).fill(icon || DEFAULT_ICON);
 
-  const handleClick = (rating) => {
+  const handleClick = (rating, e) => {
+    e.preventDefault();
     setRating(rating);
     localStorage.setItem("starRating", rating);
   };
@@ -47,7 +49,7 @@ export default function Stars({ count, defaultRating, icon, color, iconSize }) {
             }}
            onMouseEnter={() => setTemporaryRating(index + 1)}
            onMouseLeave={() => setTemporaryRating(0)}
-           onClick={() => handleClick(index + 1)}
+           onClick={(e) => handleClick(index + 1, e)}
           >
             {icon ? icon : DEFAULT_ICON}
           </div>

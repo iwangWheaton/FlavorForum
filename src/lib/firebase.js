@@ -16,9 +16,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-// const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 const storage = getStorage(app);
 
+// Initialize analytics only on the client side
+let analytics = null;
+if (typeof window !== 'undefined') {
+  analytics = getAnalytics(app);
+}
 
 export { app, db, auth, storage, googleProvider, signInWithPopup, signInWithEmailAndPassword  };
