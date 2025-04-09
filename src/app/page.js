@@ -6,21 +6,6 @@ import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import Button from "@/components/Button";
 
-// Mock feed 
-const feed = [
-  {
-    id: 1,
-    user: "Alex",
-    content: "Check out this amazing avocado toast recipe!",
-    image: "/images/avacado.jpg"
-  },
-  {
-    id: 2,
-    user: "Chris",
-    content: "Best hot sauce recommendations? 🔥",
-    image: "/images/sauce.jpg"
-  }
-];
 
 // this is the homepage 
 export default function Home() {
@@ -65,18 +50,7 @@ export default function Home() {
         )}
       </div>
 
-      {session && (
-        <div className="w-full h-full max-w-6xl mt-6 bg-background">
-          <h2 className="text-3xl font-bold mb-4">Your Feed</h2>
-          {feed.map((post) => (
-            <div key={post.id} className="bg-white p-4 mb-4 rounded-lg shadow-md">
-              <h1 className="text-gray-900 font-semibold">{post.user}</h1>
-              <h2 className="text-gray-700">{post.content}</h2>
-              <Image src={post.image} alt={post.content} width={600} height={400} className="rounded-lg mt-2" />
-            </div>
-          ))}
-        </div>
-      )}
+      
     </div>
   );
 }

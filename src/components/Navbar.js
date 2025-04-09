@@ -120,21 +120,32 @@ const Navbar = () => {
       {/* Second Level Navbar */}
       <div className="p-2 mt-2 flex justify-center">
         <div className="bg-gray/10 inline-flex px-8 py-3 rounded-full gap-8">
-        <Link href="/" className="hover:text-gray">
-            Home
+          {/* Home Button */}
+          <Link href={session ? "/main" : "/"} className="hover:text-gray">
+            {session ? "Main" : "Home"}
           </Link>
+
+          {/* Recipes Button */}
           <Link href="/main/recipes" className="hover:text-gray">
             Recipes
           </Link>
+
+          {/* Communities Button */}
           <Link href="/main/community" className="hover:text-gray">
             Communities
           </Link>
+
+          {/* Create Recipe Button */}
           <Link href="/main/recipes/new" className="hover:text-gray">
             Create recipe
           </Link>
-          <Link href="/main/profile" className="hover:text-gray">
-            Profile
-          </Link>
+
+          {/* Profile Button (Only if Logged In) */}
+          {session && (
+            <Link href="/main/profile" className="hover:text-gray">
+              Profile
+            </Link>
+          )}
         </div>
       </div>
     </nav>

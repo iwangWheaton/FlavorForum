@@ -21,13 +21,16 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    console.log("Logging in with", email, password);
+    // console.log("Logging in with", email, password);
     const res = await signIn("credentials", {
       username: email,
       password: password,
       redirect: false,
     });
-    if (res.ok) router.push(redirectTo);
+    if (res.error) {
+      setError('Invalid email or password');
+    }
+    else if (res.ok) router.push(redirectTo);
   };
 
   return (

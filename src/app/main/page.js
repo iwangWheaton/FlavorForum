@@ -1,7 +1,11 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import Button from "@/components/Button";
+import Image from "next/image";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function MainPage() {
   const { data: session } = useSession();
@@ -16,13 +20,124 @@ export default function MainPage() {
   // State for toggling the left-side navigation
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
-  // Mock data for communities and posts
-  const communities = ["Baking", "Grilling", "Vegan", "Desserts", "Quick Meals"];
-  const posts = [
-    { id: 1, title: "10 Best Vegan Recipes", author: "ChefJohn", timestamp: "2 hours ago" },
-    { id: 2, title: "How to Grill the Perfect Steak", author: "GrillMaster", timestamp: "5 hours ago" },
-    { id: 3, title: "Quick 15-Minute Meals", author: "FastCook", timestamp: "1 day ago" },
-  ];
+  // State for posts
+  const [posts, setPosts] = useState([]);
+
+  // State for the create post modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newPostContent, setNewPostContent] = useState("");
+  const [newPostImage, setNewPostImage] = useState(null);
+  const [selectedCommunity, setSelectedCommunity] = useState("");
+
+  // State for user's joined communities
+  const [userCommunities, setUserCommunities] = useState([]);
+
+  // Fetch user's joined communities
+  useEffect(() => {
+    const fetchUserCommunities = async () => {
+      if (!session?.user?.uid) return;
+
+      try {
+        const communitiesRef = collection(db, "users", session.user.uid, "communities");
+        const querySnapshot = await getDocs(communitiesRef);
+        const communities = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setUserCommunities(communities);
+      } catch (error) {
+        console.error("Error fetching user's communities:", error);
+      }
+    };
+
+    fetchUserCommunities();
+  }, [session]);
+
+  // Fetch posts from Firestore
+  useEffect(() => {
+    const fetchPosts = async () => {
+      // console.log("Fetching posts with selected option:", selectedOption);
+      if (!userCommunities.length) return;
+      try {
+        const allPosts = [];
+        for (const community of userCommunities) {
+          
+          const postsRef = collection(db, "communities", community.id, "posts");
+          
+          const querySnapshot = await getDocs(postsRef);
+          const communityPosts = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          allPosts.push(...communityPosts);
+        }
+        console.log("Fetched posts:", allPosts);
+        setPosts(allPosts);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      }
+    };
+
+    fetchPosts();
+  }, [userCommunities, selectedOption]);
+
+  // Handle creating a new post
+  const handleCreatePost = async () => {
+    if (!newPostContent || !selectedCommunity) {
+      alert("Please fill in all fields.");
+      return;
+    }
+  
+    try {
+      let imageUrl = null;
+  
+      // Upload the image to Firebase Storage if an image is selected
+      if (newPostImage) {
+        const storage = getStorage(); // Initialize Firebase Storage
+        const storageRef = ref(storage, `images/${newPostImage.name}`);
+        const snapshot = await uploadBytes(storageRef, newPostImage);
+        imageUrl = await getDownloadURL(snapshot.ref);
+      }
+  
+      // Fetch the community name based on the selectedCommunity ID
+      const communityRef = doc(db, "communities", selectedCommunity);
+      const communitySnap = await getDoc(communityRef);
+      const communityName = communitySnap.exists() ? communitySnap.data().name : "Unknown Community";
+  
+      // Add post to the community's posts subcollection
+      const postRef = await addDoc(
+        collection(db, "communities", selectedCommunity, "posts"),
+        {
+          content: newPostContent,
+          image: imageUrl, // Store the image URL
+          userName: session?.user?.name || "Anonymous",
+          userProfilePicture: session?.user?.image || "/default-profile.png",
+          communityName: communityName, // Use the fetched community name
+          timestamp: serverTimestamp(),
+          likes: 0,
+          comments: [],
+        }
+      );
+  
+      // Add post to the user's posts subcollection
+      await addDoc(collection(db, "users", session.user.uid, "posts"), {
+        content: newPostContent,
+        image: imageUrl, // Store the image URL
+        communityId: selectedCommunity,
+        communityName: communityName, // Use the fetched community name
+        postId: postRef.id,
+        timestamp: serverTimestamp(),
+      });
+  
+      console.log("Post created with ID:", postRef.id);
+      setIsModalOpen(false);
+      setNewPostContent("");
+      setNewPostImage(null);
+      setSelectedCommunity("");
+    } catch (error) {
+      console.error("Error creating post:", error);
+    }
+  };
 
   return (
     <main className="flex bg-background">
@@ -40,19 +155,14 @@ export default function MainPage() {
             <li>
               <h3 className="text-sm font-semibold mt-4">Your Communities</h3>
               <ul className="space-y-1 mt-2">
-                {communities.slice(0, 5).map((community, index) => (
+                {userCommunities.map((community) => (
                   <li
-                    key={index}
+                    key={community.id}
                     className="p-2 bg-gray-200 rounded cursor-pointer hover:bg-gray-300"
                   >
-                    {community}
+                    {community.name}
                   </li>
                 ))}
-                {communities.length > 5 && (
-                  <li className="p-2 text-blue-500 cursor-pointer hover:underline">
-                    Show More
-                  </li>
-                )}
               </ul>
             </li>
           </ul>
@@ -62,12 +172,12 @@ export default function MainPage() {
       {/* Divider with Toggle Button */}
       <div className="relative flex items-center ">
         <div className="h-full w-[2px] bg-gray"></div>
-        <button
+        <Button
           onClick={() => setIsSidebarVisible(!isSidebarVisible)}
           className="absolute -right-3 bg-black rounded-full p-1 shadow hover:bg-gray"
         >
           {isSidebarVisible ? "←" : "→"}
-        </button>
+        </Button>
       </div>
 
       {/* Main Content */}
@@ -92,9 +202,12 @@ export default function MainPage() {
               </button>
             ))}
           </div>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-            Post
-          </button>
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Create Post
+          </Button>
         </div>
 
         {/* Posts Section */}
@@ -104,14 +217,74 @@ export default function MainPage() {
               key={post.id}
               className="p-4 bg-white rounded shadow hover:shadow-md cursor-pointer"
             >
-              <h3 className="text-lg font-bold">{post.title}</h3>
-              <p className="text-sm text-gray-500">
-                By {post.author} • {post.timestamp}
-              </p>
+              <div className="flex items-center mb-2">
+                <Image
+                  src={post.userProfilePicture}
+                  alt="User Profile"
+                  width={40} // Added width property
+                  height={40} // Added height property
+                  className="w-8 h-8 rounded-full mr-2"
+                />
+                <div>
+                  <h2 className="text-sm font-semibold">{post.userName}</h2>
+                  <h2 className="text-xs text-gray-500">
+                    {post.communityName} • {post.timestamp?.toDate().toLocaleString()}
+                  </h2>
+                </div>
+              </div>
+              <h3 className="text-lg font-bold">{post.content}</h3>
+              <div className="flex items-center space-x-4 mt-2">
+                <Button className="text-blue-500 hover:underline">Like ({post.likes})</Button>
+                <Button className="text-blue-500 hover:underline">Share</Button>
+              </div>
             </div>
           ))}
         </div>
       </section>
+
+      {/* Create Post Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <Button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            >
+              X
+            </Button>
+            <h2 className="text-xl font-bold mb-4">Create a Post</h2>
+            <textarea
+              value={newPostContent}
+              onChange={(e) => setNewPostContent(e.target.value)}
+              placeholder="What's on your mind?"
+              className="w-full p-2 border rounded mb-4"
+            ></textarea>
+            <input
+              type="file"
+              onChange={(e) => setNewPostImage(e.target.files[0])}
+              className="mb-4"
+            />
+            <select
+              value={selectedCommunity}
+              onChange={(e) => setSelectedCommunity(e.target.value)}
+              className="w-full p-2 border rounded mb-4"
+            >
+              <option value="">Select a community</option>
+              {userCommunities.map((community) => (
+                <option key={community.id} value={community.id}>
+                  {community.name}
+                </option>
+              ))}
+            </select>
+            <Button
+              onClick={handleCreatePost}
+              className="w-full bg-blue-500 p-2 rounded hover:bg-blue-600"
+            >
+              Post
+            </Button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
