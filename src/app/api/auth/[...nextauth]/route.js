@@ -1,8 +1,10 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google"; // Example provider
+import GoogleProvider from "next-auth/providers/google";
 import { signInWithEmailAndPassword } from "@/lib/firebase";
 import { auth } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import admin from "firebase-admin"; // Needed for serverTimestamp
 
 export const authOptions = {
   providers: [
@@ -33,16 +35,31 @@ export const authOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) token.uid = user.id;
+      if (user) {
+        token.uid = user.id || user.uid;
+      }
       return token;
     },
     async session({ session, token }) {
       session.user.uid = token.uid;
+
+      const userRef = adminDb.collection("users").doc(token.uid);
+      const docSnap = await userRef.get();
+
+      if (!docSnap.exists) {
+        await userRef.set({
+          userID: token.uid,
+          email: session.user.email,
+          profilePic: session.user.image || null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
       return session;
     },
   },
   pages: {
-    signIn: "/login", // Ensure this matches your login page route
+    signIn: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

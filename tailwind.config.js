@@ -21,10 +21,26 @@ module.exports = {
       typography: {
         DEFAULT: {
           css: {
+            color: '#000000', // Set default text color to black
             h1: {
               color: '#000000',
             },
             h2: {
+              color: '#000000',
+            },
+            option: {
+              color: '#000000',
+            },
+            p: {
+              color: '#000000',
+            },
+            li: {
+              color: '#000000',
+            },
+            span: {
+              color: '#000000',
+            },
+            a: {
               color: '#000000',
             },
           },

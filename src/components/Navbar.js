@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
+import { FaUserCircle } from "react-icons/fa"; // Default profile icon
 
 const Navbar = () => {
   const { data: session } = useSession();
@@ -14,6 +15,20 @@ const Navbar = () => {
   // Prep for Algolia search
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".profile-dropdown")) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
 
   const handleResultClick = (objectID) => {
     router.push(`/recipes/${objectID}`);
@@ -54,21 +69,26 @@ const Navbar = () => {
         </div>
 
         {/* Profile/Login Button */}
-        <div
-          className="relative"
-          onMouseEnter={() => setIsDropdownOpen(true)}
-          onMouseLeave={() => setIsDropdownOpen(false)}
-        >
+        <div className="relative profile-dropdown hover:bg-gray">
           {session ? (
-            <div className="flex items-center gap-2 cursor-pointer p-3 hover:bg-gray-800 rounded">
-              {/* Use Google profile picture */}
-              <Image
-                src={session.user.image}
-                alt="Profile"
-                width={32}
-                height={32}
-                className="rounded-full border border-gray-300"
-              />
+            <div
+              className={`flex items-center gap-2 cursor-pointer p-2 rounded ${
+                isDropdownOpen ? "bg-gray-800" : "hover:bg-gray-800"
+              }`}
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              {/* Use Google profile picture or default icon */}
+              {session.user.image ? (
+                <Image
+                  src={session.user.image}
+                  alt="Profile"
+                  width={32}
+                  height={32}
+                  className="rounded-full border border-gray-300"
+                />
+              ) : (
+                <FaUserCircle size={32} className="text-gray-300" />
+              )}
               <span>{session.user.name}</span>
             </div>
           ) : (
@@ -100,21 +120,32 @@ const Navbar = () => {
       {/* Second Level Navbar */}
       <div className="p-2 mt-2 flex justify-center">
         <div className="bg-gray/10 inline-flex px-8 py-3 rounded-full gap-8">
-        <Link href="/" className="hover:text-gray">
-            Home
+          {/* Home Button */}
+          <Link href={session ? "/main" : "/"} className="hover:text-gray">
+            {session ? "Main" : "Home"}
           </Link>
+
+          {/* Recipes Button */}
           <Link href="/main/recipes" className="hover:text-gray">
             Recipes
           </Link>
+
+          {/* Communities Button */}
           <Link href="/main/community" className="hover:text-gray">
             Communities
           </Link>
+
+          {/* Create Recipe Button */}
           <Link href="/main/recipes/new" className="hover:text-gray">
             Create recipe
           </Link>
-          <Link href="/main/profile" className="hover:text-gray">
-            Profile
-          </Link>
+
+          {/* Profile Button (Only if Logged In) */}
+          {session && (
+            <Link href="/main/profile" className="hover:text-gray">
+              Profile
+            </Link>
+          )}
         </div>
       </div>
     </nav>

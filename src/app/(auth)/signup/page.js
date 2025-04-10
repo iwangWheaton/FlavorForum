@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import styles from './Login.module.css';
 import Button from "@/components/Button";
 
@@ -18,6 +20,7 @@ export default function Signup() {
     email: '',
     password: ''
   });
+  const [error, setError] = useState('');
 
   const [isSubmitted, setSubmitted] = useState(false);
 
@@ -42,16 +45,34 @@ export default function Signup() {
 
   const handleSubmit = async (e) => { // when the form is submitted, set the submitted state to true
     e.preventDefault();
-    const firstName = formData.fullName.split(' ')[0];
-    setSubmitted(true);
+    setError('');
 
-    // Simulate signup process
-    // Replace this with your actual signup logic
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
 
-    // Redirect to the specified URL after signup
-    if (redirect) {
-      router.push(redirect);
+      const user = userCredential.user;
+
+      // Create Firestore user doc immediately
+      await setDoc(doc(db, 'users', user.uid), {
+        userID: user.uid,
+        email: user.email,
+        profilePic: null,
+        createdAt: serverTimestamp(),
+      });
+
+      // Then sign in
+      await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        callbackUrl: '/',
+      });
+    } catch (err) {
+      console.error(err);
+      setError('Failed to sign up. Please try again.');
     }
   };
 

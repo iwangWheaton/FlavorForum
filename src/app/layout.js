@@ -1,25 +1,28 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import "./global.css";
 import Navbar from "@/components/Navbar";
 import ClientSessionProvider from "./ClientSessionProvider";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export const metadata = {
   title: "Flavor Forum",
   description: "Find and share amazing recipes with your community",
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  // Fetch session on the server
+  const session = await getServerSession(authOptions);
+
   return (
-    <ClientSessionProvider>
-      <html lang="en">
-        <body
-          className="antialiased"
-          style={{ backgroundColor: "#FDF6EE" }} // Set the background color here
-        >
+    <html lang="en">
+      <body className="antialiased bg-background">
+        {/* Pass session to ClientSessionProvider */}
+        <ClientSessionProvider session={session}>
+          {/* Navbar is a client component */}
           <Navbar />
           <main className="flex-grow">{children}</main>
-        </body>
-      </html>
-    </ClientSessionProvider>
+        </ClientSessionProvider>
+      </body>
+    </html>
   );
 }
