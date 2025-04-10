@@ -257,7 +257,7 @@ export default function MainPage() {
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
               placeholder="What's on your mind?"
-              className="w-full p-2 border rounded mb-4"
+              className="w-full p-2 border rounded mb-4 text-black"
             ></textarea>
             <input
               type="file"
@@ -267,11 +267,11 @@ export default function MainPage() {
             <select
               value={selectedCommunity}
               onChange={(e) => setSelectedCommunity(e.target.value)}
-              className="w-full p-2 border rounded mb-4"
+              className="w-full p-2 border rounded mb-4 text-black"
             >
-              <option value="">Select a community</option>
+              <option className="text-black" value="">Select a community</option>
               {userCommunities.map((community) => (
-                <option key={community.id} value={community.id}>
+                <option className="text-black" key={community.id} value={community.id}>
                   {community.name}
                 </option>
               ))}
