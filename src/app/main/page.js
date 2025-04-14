@@ -28,9 +28,11 @@ export default function MainPage() {
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostImage, setNewPostImage] = useState(null);
   const [selectedCommunity, setSelectedCommunity] = useState("");
+  const [selectedRecipe, setSelectedRecipe] = useState("");
 
-  // State for user's joined communities
+  // State for user's joined communities and recipes
   const [userCommunities, setUserCommunities] = useState([]);
+  const [userRecipes, setUserRecipes] = useState([]);
 
   // Fetch user's joined communities
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function MainPage() {
     fetchUserCommunities();
   }, [session]);
 
-  // Fetch posts from Firestore
+  // Fetch user's recipes
   useEffect(() => {
     const fetchPosts = async () => {
       // console.log("Fetching posts with selected option:", selectedOption);
@@ -79,7 +81,24 @@ export default function MainPage() {
     };
 
     fetchPosts();
-  }, [userCommunities, selectedOption]);
+    const fetchUserRecipes = async () => {
+      if (!session?.user?.uid) return;
+
+      try {
+        const recipesRef = collection(db, "users", session.user.uid, "recipes");
+        const querySnapshot = await getDocs(recipesRef);
+        const recipes = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setUserRecipes(recipes);
+      } catch (error) {
+        console.error("Error fetching user's recipes:", error);
+      }
+    };
+
+    fetchUserRecipes();
+  }, [session, userCommunities, selectedOption]);
 
   // Handle creating a new post
   const handleCreatePost = async () => {
@@ -87,10 +106,10 @@ export default function MainPage() {
       alert("Please fill in all fields.");
       return;
     }
-  
+
     try {
       let imageUrl = null;
-  
+
       // Upload the image to Firebase Storage if an image is selected
       if (newPostImage) {
         const storage = getStorage(); // Initialize Firebase Storage
@@ -98,12 +117,15 @@ export default function MainPage() {
         const snapshot = await uploadBytes(storageRef, newPostImage);
         imageUrl = await getDownloadURL(snapshot.ref);
       }
-  
+
       // Fetch the community name based on the selectedCommunity ID
       const communityRef = doc(db, "communities", selectedCommunity);
       const communitySnap = await getDoc(communityRef);
       const communityName = communitySnap.exists() ? communitySnap.data().name : "Unknown Community";
-  
+
+      // Fetch the selected recipe details
+      const recipeDetails = userRecipes.find((recipe) => recipe.id === selectedRecipe);
+
       // Add post to the community's posts subcollection
       const postRef = await addDoc(
         collection(db, "communities", selectedCommunity, "posts"),
@@ -113,27 +135,21 @@ export default function MainPage() {
           userName: session?.user?.name || "Anonymous",
           userProfilePicture: session?.user?.image || "/default-profile.png",
           communityName: communityName, // Use the fetched community name
+          recipeId: selectedRecipe,
+          recipeTitle: recipeDetails?.title || null,
+          recipeImage: recipeDetails?.image || null,
           timestamp: serverTimestamp(),
           likes: 0,
           comments: [],
         }
       );
-  
-      // Add post to the user's posts subcollection
-      await addDoc(collection(db, "users", session.user.uid, "posts"), {
-        content: newPostContent,
-        image: imageUrl, // Store the image URL
-        communityId: selectedCommunity,
-        communityName: communityName, // Use the fetched community name
-        postId: postRef.id,
-        timestamp: serverTimestamp(),
-      });
-  
+
       console.log("Post created with ID:", postRef.id);
       setIsModalOpen(false);
       setNewPostContent("");
       setNewPostImage(null);
       setSelectedCommunity("");
+      setSelectedRecipe("");
     } catch (error) {
       console.error("Error creating post:", error);
     }
@@ -168,17 +184,6 @@ export default function MainPage() {
           </ul>
         </aside>
       )}
-
-      {/* Divider with Toggle Button */}
-      <div className="relative flex items-center ">
-        <div className="h-full w-[2px] bg-gray"></div>
-        <Button
-          onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-          className="absolute -right-3 bg-black rounded-full p-1 shadow hover:bg-gray"
-        >
-          {isSidebarVisible ? "←" : "→"}
-        </Button>
-      </div>
 
       {/* Main Content */}
       <section className="flex-grow p-6">
@@ -221,8 +226,8 @@ export default function MainPage() {
                 <Image
                   src={post.userProfilePicture}
                   alt="User Profile"
-                  width={40} // Added width property
-                  height={40} // Added height property
+                  width={40}
+                  height={40}
                   className="w-8 h-8 rounded-full mr-2"
                 />
                 <div>
@@ -233,6 +238,23 @@ export default function MainPage() {
                 </div>
               </div>
               <h3 className="text-lg font-bold">{post.content}</h3>
+              {post.recipeId && (
+                <div
+                  onClick={() => window.location.href = `/recipes/${post.recipeId}`}
+                  className="mt-4 p-4 bg-gray-100 rounded cursor-pointer hover:bg-gray-200"
+                >
+                  <h4 className="text-md font-semibold">{post.recipeTitle}</h4>
+                  {post.recipeImage && (
+                    <Image
+                      src={post.recipeImage}
+                      alt={post.recipeTitle}
+                      width={100}
+                      height={100}
+                      className="rounded"
+                    />
+                  )}
+                </div>
+              )}
               <div className="flex items-center space-x-4 mt-2">
                 <Button className="text-blue-500 hover:underline">Like ({post.likes})</Button>
                 <Button className="text-blue-500 hover:underline">Share</Button>
@@ -273,6 +295,18 @@ export default function MainPage() {
               {userCommunities.map((community) => (
                 <option className="text-black" key={community.id} value={community.id}>
                   {community.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedRecipe}
+              onChange={(e) => setSelectedRecipe(e.target.value)}
+              className="w-full p-2 border rounded mb-4 text-black"
+            >
+              <option className="text-black" value="">Select a recipe (optional)</option>
+              {userRecipes.map((recipe) => (
+                <option className="text-black" key={recipe.id} value={recipe.id}>
+                  {recipe.title}
                 </option>
               ))}
             </select>
