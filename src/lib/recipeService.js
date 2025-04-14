@@ -5,12 +5,10 @@ import { collection, addDoc, getDocs, doc, getDoc, setDoc, serverTimestamp, quer
 // add a recipe
 export const addRecipe = async (recipe, userId) => {
   try {
-    // extract the image file before saving to Firestore
     const { image, ...recipeData } = recipe;
-
     const docRef = await addDoc(collection(db, 'recipes'), {
       ...recipeData,
-      userId,
+      userId, 
       createdAt: new Date()
     });
     return { id: docRef.id, ...recipe };

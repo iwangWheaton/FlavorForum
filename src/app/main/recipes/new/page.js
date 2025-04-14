@@ -105,7 +105,7 @@ export default function CreateRecipe() {
         imageUrl: imageUrl,
       };
 
-      await addRecipe(recipeToSubmit, userId);
+      await addRecipe(recipeToSubmit, session.user.uid);
       setSubmitted(true);
     } catch (error) {
       console.error("Error:", error);
