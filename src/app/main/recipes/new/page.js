@@ -4,10 +4,11 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { addRecipe } from "@/lib/recipeService";
 import { uploadRecipeImage } from "@/lib/uploadService";
-import { getUserId } from "@/lib/userService";
 import Image from "next/image";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { useEffect } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { v4 as uuidv4 } from "uuid";
 
 export default function CreateRecipe() {
   const { data: session } = useSession();
@@ -80,22 +81,23 @@ export default function CreateRecipe() {
     
     try {
       let userId = 'anonymous';
-      if(session?.user?.email) {
-        userId = await getUserId(session.user.email);
+      if (session?.user?.email) {
+        userId = session.user.uid;
       }
 
       let imageUrl = recipeData.imageUrl;
       
-      //  image
-      if(recipeData.image) {
+      // Generate a unique ID for the recipe
+      const recipeId = uuidv4();
+
+      // Upload image
+      if (recipeData.image) {
         setUploadProgress(0);
 
-        // generate a temporary ID for the recipe folder
-        const tempRecipeId = `${userId}-${Date.now()}`;
         imageUrl = await uploadRecipeImage(
           recipeData.image,
           userId,
-          tempRecipeId,
+          recipeId,
           (progress) => setUploadProgress(progress)
         );
       }
@@ -103,9 +105,16 @@ export default function CreateRecipe() {
       const recipeToSubmit = {
         ...recipeData,
         imageUrl: imageUrl,
+        id: recipeId, // Include the ID in the recipe data
       };
 
-      await addRecipe(recipeToSubmit, session.user.uid);
+      // Add recipe to the main recipes collection
+      await addRecipe(recipeToSubmit, recipeId);
+
+      // Add recipe to the user's recipes subcollection
+      const userRecipeDoc = doc(db, "users", userId, "recipes", recipeId);
+      await setDoc(userRecipeDoc, recipeToSubmit);
+
       setSubmitted(true);
     } catch (error) {
       console.error("Error:", error);
