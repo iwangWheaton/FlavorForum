@@ -32,16 +32,25 @@ export default function CreateBoard() {
     setIsSubmitting(true);
     
     try {
-      let userId = 'anonymous';
-      if(session?.user?.email) {
-        userId = await getUserId(session.user.email);
+      // Get user ID directly from the session
+      const userId = session?.user?.uid;
+      
+      if (!userId) {
+        throw new Error("User ID not found in session");
       }
       
-      await createBoard(boardData, userId);
+      // Include userId directly in the board data
+      const boardWithUserId = {
+        ...boardData,
+        userId: userId
+      };
+      
+      // Pass the complete object to createBoard
+      await createBoard(boardWithUserId, userId);
       router.push("/main/profile/boards");
     } catch (error) {
       console.error("Error:", error);
-      alert("Failed to create board");
+      alert("Failed to create board: " + error.message);
     } finally {
       setIsSubmitting(false);
     }

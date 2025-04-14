@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import { FaUserCircle } from "react-icons/fa"; // Default profile icon
@@ -11,6 +11,7 @@ const Navbar = () => {
   const { data: session } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   // Prep for Algolia search
   const [query, setQuery] = useState("");
@@ -32,6 +33,14 @@ const Navbar = () => {
 
   const handleResultClick = (objectID) => {
     router.push(`/recipes/${objectID}`);
+  };
+
+  // Function to determine if a link is active
+  const isActive = (path) => {
+    if (path === "/" || path === "/main") {
+      return pathname === path;
+    }
+    return pathname.startsWith(path);
   };
 
   return (
@@ -77,7 +86,6 @@ const Navbar = () => {
               }`}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
-              {/* Use Google profile picture or default icon */}
               {session.user.image ? (
                 <Image
                   src={session.user.image}
@@ -117,35 +125,81 @@ const Navbar = () => {
         </div>
       </div>
 
+        
       {/* Second Level Navbar */}
       <div className="p-2 mt-2 flex justify-center">
         <div className="bg-gray/10 inline-flex px-8 py-3 rounded-full gap-8">
-          {/* Home Button */}
-          <Link href={session ? "/main" : "/"} className="hover:text-gray">
+          {/* Home/Main Button */}
+          <Link 
+            href={session ? "/main" : "/"} 
+            className={`hover:text-gray relative px-2 ${
+              (session && isActive("/main")) || (!session && isActive("/")) 
+                ? "text-red" 
+                : ""
+            }`}
+          >
             {session ? "Main" : "Home"}
+            {/* Active indicator */}
+            {(session && isActive("/main")) || (!session && isActive("/")) ? (
+              <span className="absolute bottom-0 left-0 w-full h-0.2 bg-red rounded-full"></span>
+            ) : null}
           </Link>
 
           {/* Recipes Button */}
-          <Link href="/main/recipes" className="hover:text-gray">
+          <Link 
+            href="/main/recipes" 
+            className={`hover:text-gray relative px-2 ${
+              isActive("/main/recipes") ? "text-red" : ""
+            }`}
+          >
             Recipes
+            {/* Active indicator */}
+            {isActive("/main/recipes") ? (
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red rounded-full"></span>
+            ) : null}
           </Link>
 
           {/* Communities Button */}
-          <Link href="/main/community" className="hover:text-gray">
+          <Link 
+            href="/main/community" 
+            className={`hover:text-gray relative px-2 ${
+              isActive("/main/community") ? "text-red" : ""
+            }`}
+          >
             Communities
+            {/* Active indicator */}
+            {isActive("/main/community") ? (
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red rounded-full"></span>
+            ) : null}
+          </Link>
+
+          {/* Saved Recipes Button */}
+          <Link 
+            href="/main/profile/boards" 
+            className={`hover:text-gray relative px-2 ${
+              isActive("/main/profile/boards") ? "text-red" : ""
+            }`}
+          >
+            Saved
+            {/* Active indicator */}
+            {isActive("/main/profile/boards") ? (
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red rounded-full"></span>
+            ) : null}
           </Link>
 
           {/* Create Recipe Button */}
-          <Link href="/main/recipes/new" className="hover:text-gray">
+          <Link 
+            href="/main/recipes/new" 
+            className={`hover:text-gray relative px-2 ${
+              isActive("/main/recipes/new") ? "text-red" : ""
+            }`}
+          >
             Create recipe
+            {/* Active indicator */}
+            {isActive("/main/recipes/new") ? (
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red rounded-full"></span>
+            ) : null}
           </Link>
-
-          {/* Profile Button (Only if Logged In) */}
-          {session && (
-            <Link href="/main/profile" className="hover:text-gray">
-              Profile
-            </Link>
-          )}
         </div>
       </div>
     </nav>

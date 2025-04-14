@@ -2,24 +2,24 @@ import { db } from './firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 
-export async function getUserId(email) {
+export async function getUserId(user) {
+  const uid = user.uid || user;
   try {
-    // try to get existing user document
-    const userRef = doc(db, 'users', email);
+    // Check for existing user document by UID
+    const userRef = doc(db, 'users', uid);
     const userDoc = await getDoc(userRef);
     
     if (userDoc.exists()) {
       // return existing user ID
       return userDoc.data().userId;
     } else {
-      // create new user with generated ID
-      const newUserId = uuidv4();
+      // Create new user with generated ID
       await setDoc(userRef, {
-        email,
-        userId: newUserId,
+        email: typeof user === 'object' ? user.email : null,
+        userId: uid,
         createdAt: new Date()
       });
-      return newUserId;
+      return uid;
     }
   } catch (error) {
     console.error('Error getting/creating user ID:', error);

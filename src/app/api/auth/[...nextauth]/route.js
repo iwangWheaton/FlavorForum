@@ -28,6 +28,7 @@ export const authOptions = {
           const user = userCredential.user;
           return { id: user.uid, name: user.displayName, email: user.email };
         } catch (error) {
+          console.error("Error during authorization:", error.message);
           throw new Error("Invalid email or password");
         }
       },
@@ -35,27 +36,37 @@ export const authOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.uid = user.id || user.uid;
+      try {
+        if (user) {
+          token.uid = user.id || user.uid;
+        }
+        return token;
+      } catch (error) {
+        console.error("Error in JWT callback:", error.message);
+        throw new Error("Failed to process JWT token");
       }
-      return token;
     },
     async session({ session, token }) {
-      session.user.uid = token.uid;
+      try {
+        session.user.uid = token.uid;
 
-      const userRef = adminDb.collection("users").doc(token.uid);
-      const docSnap = await userRef.get();
+        const userRef = adminDb.collection("users").doc(token.uid);
+        const docSnap = await userRef.get();
 
-      if (!docSnap.exists) {
-        await userRef.set({
-          userID: token.uid,
-          email: session.user.email,
-          profilePic: session.user.image || null,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        if (!docSnap.exists) {
+          await userRef.set({
+            userID: token.uid,
+            email: session.user.email,
+            profilePic: session.user.image || null,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        return session;
+      } catch (error) {
+        console.error("Error in session callback:", error.message);
+        throw new Error("Failed to process session");
       }
-
-      return session;
     },
   },
   pages: {

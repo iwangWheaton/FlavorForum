@@ -9,7 +9,7 @@ const RecipeCard = ({ recipe }) => {
   const imageUrl = recipe.imageUrl || "/images/background.avif";
   
   return (
-    <Link href={`/recipes/${recipe.id}`}>
+    <Link href={`/main/recipes/${recipe.id}`}>
       <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
         <div className="relative h-48 w-full">
           <Image 
@@ -21,13 +21,9 @@ const RecipeCard = ({ recipe }) => {
         </div>
         <div className="p-4">
           <div className="flex justify-between items-start">
-            <h3 className="text-lg text-black">{recipe.title}</h3>
+            <h3 className="text-lg font-semibold text-gray">{recipe.title}</h3>
             <div className="flex items-center">
-              <StarComp>
-              onClick={(e) => handleClick(index + 1, e)}
-                onMouseEnter={() => setTemporaryRating(index + 1)}
-                onMouseLeave={() => setTemporaryRating(0)}
-           </StarComp>
+              <StarComp />
             </div>
           </div>
           <div className="mt-2 flex justify-between text-sm text-gray">
@@ -44,7 +40,7 @@ const RecipeCard = ({ recipe }) => {
               recipe.dietaryOptions.map((tag, index) => (
                 <span 
                   key={index} 
-                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                  className="px-2 py-1 bg-blue text-white text-xs rounded-full"
                 >
                   {tag}
                 </span>
