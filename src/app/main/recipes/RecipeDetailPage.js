@@ -1,4 +1,3 @@
-// src/app/main/recipes/RecipeDetailPage.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,13 +8,18 @@ import StarComp from "@/app/main/reviews/StarRating/starComp";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import Button from "@/components/Button";
+import SaveToBoardModal from "@/components/SaveToBoardModal";
+import { useSession } from "next-auth/react";
+import { FaBookmark, FaRegBookmark } from "react-icons/fa";
 
 export default function RecipeDetailPage({ params }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const unwrappedParams = use(params);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchRecipe = async () => {
@@ -43,6 +47,14 @@ export default function RecipeDetailPage({ params }) {
 
     fetchRecipe();
   }, [unwrappedParams]);
+
+  const handleSaveClick = () => {
+    if (!session) {
+      router.push(`/login?redirect=/main/recipes/${unwrappedParams.recipeId}`);
+      return;
+    }
+    setIsSaveModalOpen(true);
+  };
 
   if (loading) {
     return (
@@ -86,7 +98,15 @@ export default function RecipeDetailPage({ params }) {
           />
           <div className="absolute inset-0 bg-gray bg-opacity-30 flex items-end">
             <div className="p-6 w-full">
-              <h1 className="text-4xl font-bold text-white">{recipe.title}</h1>
+              <div className="flex justify-between items-center">
+                <h1 className="text-4xl font-bold text-white">{recipe.title}</h1>
+                <Button
+                  onClick={handleSaveClick}
+                  className="flex items-center gap-2 bg-blue hover:bg-blue/90 text-white rounded-full p-3"
+                >
+                  <FaRegBookmark size={20} />
+                </Button>
+              </div>
               <div className="flex items-center mt-2">
                 <StarComp />
               </div>
@@ -173,16 +193,31 @@ export default function RecipeDetailPage({ params }) {
           </div>
         </div>
 
-        {/* Back button */}
-        <div className="mt-8">
+        {/* Actions */}
+        <div className="mt-8 flex justify-between">
           <Button 
             onClick={() => router.push("/main/recipes")} 
             className="bg-red hover:bg-red/90"
           >
             Back to Recipes
           </Button>
+          
+          <Button
+            onClick={handleSaveClick}
+            className="flex items-center gap-2 bg-blue hover:bg-blue/90"
+          >
+            <FaRegBookmark /> Save to Board
+          </Button>
         </div>
       </div>
+
+      {/* Save to Board Modal */}
+      <SaveToBoardModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        recipeId={unwrappedParams?.recipeId}
+        recipeName={recipe?.title}
+      />
     </div>
   );
 }
