@@ -67,15 +67,9 @@ export default function MainPage() {
     try {
       const allPosts = [];
       for (const community of userCommunities) {
-        if (selectedCommunity !== "all" && community.id !== selectedCommunity) continue;
-
         let postsRef = collection(db, "communities", community.id, "posts");
 
-        // Apply sorting based on the selected option
-        if (selectedOption === "recent") {
-          postsRef = query(postsRef, orderBy("timestamp", "desc"));
-        }
-
+        // Fetch all posts without sorting here
         const querySnapshot = await getDocs(postsRef);
         const communityPosts = querySnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -84,6 +78,10 @@ export default function MainPage() {
         }));
         allPosts.push(...communityPosts);
       }
+
+      // Sort all posts by timestamp in descending order
+      allPosts.sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate());
+
       console.log("Fetched posts:", allPosts);
       setPosts(allPosts);
     } catch (error) {
@@ -163,7 +161,7 @@ export default function MainPage() {
         communityName: communityName, // Use the fetched community name
         recipeId: selectedRecipe,
         recipeTitle: recipeDetails?.title || null,
-        recipeImage: recipeDetails?.image || null,
+        recipeImage: recipeDetails?.imageUrl || null, // Use imageUrl instead of image
         timestamp: serverTimestamp(),
         likes: 0,
         comments: [],
@@ -182,14 +180,8 @@ export default function MainPage() {
 
       console.log("Post created with ID:", postRef.id);
 
-      // Refetch posts to refresh the page
-      await fetchPosts();
-
-      setIsModalOpen(false);
-      setNewPostContent("");
-      setNewPostImage(null);
-      setSelectedCommunity("");
-      setSelectedRecipe("");
+      // Refresh the page
+      window.location.reload();
     } catch (error) {
       console.error("Error creating post:", error);
     }
@@ -197,7 +189,20 @@ export default function MainPage() {
 
   // Handle liking a post
   const handleLike = async (postId, communityId) => {
+    if (!session || !session.user) {
+      alert("You must be logged in to like a post.");
+      return;
+    }
+
     try {
+      const userLikeRef = doc(db, "users", session.user.uid, "likes", postId);
+      const userLikeSnap = await getDoc(userLikeRef);
+
+      if (userLikeSnap.exists()) {
+        alert("You have already liked this post.");
+        return;
+      }
+
       // Reference the post in the community's posts subcollection
       const postRef = doc(db, "communities", communityId, "posts", postId);
 
@@ -212,10 +217,14 @@ export default function MainPage() {
         likes: increment(1),
       });
 
+      // Record the like in the user's likes subcollection
+      await setDoc(userLikeRef, { likedAt: serverTimestamp() });
+
       // Refetch posts to reflect the updated like count
       await fetchPosts();
     } catch (error) {
       console.error("Error liking post:", error);
+      alert("Failed to like the post. Please try again.");
     }
   };
 
@@ -311,12 +320,21 @@ export default function MainPage() {
                 </div>
               </div>
               <h3 className="text-lg font-bold">{post.content}</h3>
+              {post.image && (
+                <Image
+                  src={post.image}
+                  alt="Post Image"
+                  width={400}
+                  height={300}
+                  className="rounded mt-2"
+                />
+              )}
               {post.recipeId && (
                 <div
                   onClick={() => window.location.href = `/main/recipes/${post.recipeId}`}
                   className="mt-4 p-4 bg-gray-100 rounded cursor-pointer hover:bg-gray-200"
                 >
-                  <h4 className="text-md font-semibold">{post.recipeTitle}</h4>
+                  <h4 className="text-md font-semibold">{post.recipeTitle} </h4>
                   {post.recipeImage && (
                     <Image
                       src={post.recipeImage}
@@ -335,7 +353,6 @@ export default function MainPage() {
                 >
                   Like ({post.likes})
                 </Button>
-                <Button className="text-blue-500 hover:underline">Share</Button>
               </div>
             </div>
           ))}
@@ -363,7 +380,7 @@ export default function MainPage() {
             <input
               type="file"
               onChange={(e) => setNewPostImage(e.target.files[0])}
-              className="mb-4"
+              className="mb-4 text-black"
             />
             <select
               value={selectedCommunity}

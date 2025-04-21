@@ -99,7 +99,8 @@ export default function CreateRecipe() {
         );
       }
 
-      const recipeToSubmit = {
+      // Prepare the recipe data without the `image` field
+      const { image, ...recipeToSubmit } = {
         ...recipeData,
         imageUrl: imageUrl,
         userId: userId, // Include userId in the recipe data

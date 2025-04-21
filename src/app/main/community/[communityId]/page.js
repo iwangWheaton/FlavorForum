@@ -128,12 +128,8 @@ export default function CommunityPage({ params: paramsPromise }) {
 
       console.log("Post created with ID:", postRef.id);
 
-      // Refetch posts to refresh the feed
-      await fetchPosts();
-
-      setIsModalOpen(false);
-      setNewPostContent("");
-      setNewPostImage(null);
+      // Refresh the page
+      window.location.reload();
     } catch (error) {
       console.error("Error creating post:", error);
     }
@@ -142,6 +138,9 @@ export default function CommunityPage({ params: paramsPromise }) {
   // Handle liking a post
   const handleLike = async (postId) => {
     try {
+      // Log the paths being accessed for debugging
+      console.log(`Updating likes for postId: ${postId} in communityId: ${params.communityId}`);
+
       // Reference the post in the community's posts subcollection
       const postRef = doc(db, "communities", params.communityId, "posts", postId);
 
@@ -160,6 +159,7 @@ export default function CommunityPage({ params: paramsPromise }) {
       await fetchPosts();
     } catch (error) {
       console.error("Error liking post:", error);
+      alert("Failed to like the post. Please check your permissions.");
     }
   };
 
@@ -266,7 +266,6 @@ export default function CommunityPage({ params: paramsPromise }) {
                   >
                     Like ({post.likes})
                   </button>
-                  <button className="text-blue-500 hover:underline">Comment</button>
                 </div>
               </div>
             ))}
@@ -295,7 +294,7 @@ export default function CommunityPage({ params: paramsPromise }) {
             <input
               type="file"
               onChange={(e) => setNewPostImage(e.target.files[0])}
-              className="mb-4"
+              className="mb-4 text-black"
             />
             <button
               onClick={handleCreatePost}
