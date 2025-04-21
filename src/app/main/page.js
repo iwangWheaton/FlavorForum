@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, getDoc, orderBy, setDoc, updateDoc, increment } from "firebase/firestore";
 import Button from "@/components/Button";
 import Image from "next/image";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -27,7 +27,13 @@ export default function MainPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostImage, setNewPostImage] = useState(null);
-  const [selectedCommunity, setSelectedCommunity] = useState("");
+  const [selectedCommunity, setSelectedCommunity] = useState(() => {
+    if (typeof window !== "undefined") {
+      // Access localStorage only in the browser
+      return localStorage.getItem("selectedCommunity") || "all";
+    }
+    return "all"; // Default value for server-side rendering
+  });
   const [selectedRecipe, setSelectedRecipe] = useState("");
 
   // State for user's joined communities and recipes
@@ -55,53 +61,73 @@ export default function MainPage() {
     fetchUserCommunities();
   }, [session]);
 
-  // Fetch user's recipes
-  useEffect(() => {
-    const fetchPosts = async () => {
-      // console.log("Fetching posts with selected option:", selectedOption);
-      if (!userCommunities.length) return;
-      try {
-        const allPosts = [];
-        for (const community of userCommunities) {
-          
-          const postsRef = collection(db, "communities", community.id, "posts");
-          
-          const querySnapshot = await getDocs(postsRef);
-          const communityPosts = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          allPosts.push(...communityPosts);
-        }
-        console.log("Fetched posts:", allPosts);
-        setPosts(allPosts);
-      } catch (error) {
-        console.error("Error fetching posts:", error);
-      }
-    };
+  // Fetch posts based on the selected community
+  const fetchPosts = async () => {
+    if (!userCommunities.length) return;
+    try {
+      const allPosts = [];
+      for (const community of userCommunities) {
+        let postsRef = collection(db, "communities", community.id, "posts");
 
-    fetchPosts();
-    const fetchUserRecipes = async () => {
-      if (!session?.user?.uid) return;
-
-      try {
-        const recipesRef = collection(db, "users", session.user.uid, "recipes");
-        const querySnapshot = await getDocs(recipesRef);
-        const recipes = querySnapshot.docs.map((doc) => ({
+        // Fetch all posts without sorting here
+        const querySnapshot = await getDocs(postsRef);
+        const communityPosts = querySnapshot.docs.map((doc) => ({
           id: doc.id,
+          communityId: community.id,
           ...doc.data(),
         }));
-        setUserRecipes(recipes);
-      } catch (error) {
-        console.error("Error fetching user's recipes:", error);
+        allPosts.push(...communityPosts);
       }
-    };
 
+      // Sort all posts by timestamp in descending order
+      allPosts.sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate());
+
+      console.log("Fetched posts:", allPosts);
+      setPosts(allPosts);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, [session, userCommunities, selectedOption, selectedCommunity]);
+
+  const fetchUserRecipes = async () => {
+    if (!session?.user?.uid) return;
+
+    try {
+      const recipesRef = collection(db, "users", session.user.uid, "recipes");
+      const querySnapshot = await getDocs(recipesRef);
+      const recipes = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setUserRecipes(recipes);
+    } catch (error) {
+      console.error("Error fetching user's recipes:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchUserRecipes();
-  }, [session, userCommunities, selectedOption]);
+  }, [session]);
+
+  const handleCommunitySelect = (communityId) => {
+    setSelectedCommunity(communityId);
+    if (typeof window !== "undefined") {
+      // Save the selection to localStorage only in the browser
+      localStorage.setItem("selectedCommunity", communityId);
+    }
+  };
 
   // Handle creating a new post
   const handleCreatePost = async () => {
+    if (!session || !session.user) {
+      alert("You must be logged in to create a post.");
+      return;
+    }
+
     if (!newPostContent || !selectedCommunity) {
       alert("Please fill in all fields.");
       return;
@@ -126,32 +152,79 @@ export default function MainPage() {
       // Fetch the selected recipe details
       const recipeDetails = userRecipes.find((recipe) => recipe.id === selectedRecipe);
 
+      // Create the post data
+      const postData = {
+        content: newPostContent,
+        image: imageUrl, // Store the image URL
+        userName: session.user.name || "Anonymous",
+        userProfilePicture: session.user.image || "/default-profile.png",
+        communityName: communityName, // Use the fetched community name
+        recipeId: selectedRecipe,
+        recipeTitle: recipeDetails?.title || null,
+        recipeImage: recipeDetails?.imageUrl || null, // Use imageUrl instead of image
+        timestamp: serverTimestamp(),
+        likes: 0,
+        comments: [],
+      };
+
       // Add post to the community's posts subcollection
-      const postRef = await addDoc(
-        collection(db, "communities", selectedCommunity, "posts"),
-        {
-          content: newPostContent,
-          image: imageUrl, // Store the image URL
-          userName: session?.user?.name || "Anonymous",
-          userProfilePicture: session?.user?.image || "/default-profile.png",
-          communityName: communityName, // Use the fetched community name
-          recipeId: selectedRecipe,
-          recipeTitle: recipeDetails?.title || null,
-          recipeImage: recipeDetails?.image || null,
-          timestamp: serverTimestamp(),
-          likes: 0,
-          comments: [],
-        }
-      );
+      const postRef = await addDoc(collection(db, "communities", selectedCommunity, "posts"), postData);
+
+      // Add post to the main posts collection
+      const mainPostRef = doc(db, "posts", postRef.id);
+      await setDoc(mainPostRef, { ...postData, id: postRef.id });
+
+      // Add post to the user's posts subcollection
+      const userPostRef = doc(db, "users", session.user.uid, "posts", postRef.id);
+      await setDoc(userPostRef, { ...postData, id: postRef.id });
 
       console.log("Post created with ID:", postRef.id);
-      setIsModalOpen(false);
-      setNewPostContent("");
-      setNewPostImage(null);
-      setSelectedCommunity("");
-      setSelectedRecipe("");
+
+      // Refresh the page
+      window.location.reload();
     } catch (error) {
       console.error("Error creating post:", error);
+    }
+  };
+
+  // Handle liking a post
+  const handleLike = async (postId, communityId) => {
+    if (!session || !session.user) {
+      alert("You must be logged in to like a post.");
+      return;
+    }
+
+    try {
+      const userLikeRef = doc(db, "users", session.user.uid, "likes", postId);
+      const userLikeSnap = await getDoc(userLikeRef);
+
+      if (userLikeSnap.exists()) {
+        alert("You have already liked this post.");
+        return;
+      }
+
+      // Reference the post in the community's posts subcollection
+      const postRef = doc(db, "communities", communityId, "posts", postId);
+
+      // Increment the like count in the database
+      await updateDoc(postRef, {
+        likes: increment(1),
+      });
+
+      // Update the like count in the main posts collection
+      const mainPostRef = doc(db, "posts", postId);
+      await updateDoc(mainPostRef, {
+        likes: increment(1),
+      });
+
+      // Record the like in the user's likes subcollection
+      await setDoc(userLikeRef, { likedAt: serverTimestamp() });
+
+      // Refetch posts to reflect the updated like count
+      await fetchPosts();
+    } catch (error) {
+      console.error("Error liking post:", error);
+      alert("Failed to like the post. Please try again.");
     }
   };
 
@@ -168,19 +241,28 @@ export default function MainPage() {
             <li className="p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300">
               Popular
             </li>
-            <li>
-              <h3 className="text-sm font-semibold mt-4">Your Communities</h3>
-              <ul className="space-y-1 mt-2">
-                {userCommunities.map((community) => (
-                  <li
-                    key={community.id}
-                    className="p-2 bg-gray-200 rounded cursor-pointer hover:bg-gray-300"
-                  >
-                    {community.name}
-                  </li>
-                ))}
-              </ul>
+          </ul>
+          <ul className="space-y-2">
+          <h2 className="text-sm font-semibold mt-4">Your Communities</h2>
+            <li
+              className={`p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300 ${
+                selectedCommunity === "all" ? "bg-blue-500 text-blue" : ""
+              }`}
+              onClick={() => handleCommunitySelect("all")}
+            >
+              All Communities
             </li>
+            {userCommunities.map((community) => (
+              <li
+                key={community.id}
+                className={`p-2 bg-gray-200 rounded cursor-pointer hover:bg-gray-300 ${
+                  selectedCommunity === community.id ? "bg-blue-500 text-blue" : ""
+                }`}
+                onClick={() => handleCommunitySelect(community.id)}
+              >
+                {community.name}
+              </li>
+            ))}
           </ul>
         </aside>
       )}
@@ -238,12 +320,21 @@ export default function MainPage() {
                 </div>
               </div>
               <h3 className="text-lg font-bold">{post.content}</h3>
+              {post.image && (
+                <Image
+                  src={post.image}
+                  alt="Post Image"
+                  width={400}
+                  height={300}
+                  className="rounded mt-2"
+                />
+              )}
               {post.recipeId && (
                 <div
-                  onClick={() => window.location.href = `/recipes/${post.recipeId}`}
+                  onClick={() => window.location.href = `/main/recipes/${post.recipeId}`}
                   className="mt-4 p-4 bg-gray-100 rounded cursor-pointer hover:bg-gray-200"
                 >
-                  <h4 className="text-md font-semibold">{post.recipeTitle}</h4>
+                  <h4 className="text-md font-semibold">{post.recipeTitle} </h4>
                   {post.recipeImage && (
                     <Image
                       src={post.recipeImage}
@@ -256,8 +347,12 @@ export default function MainPage() {
                 </div>
               )}
               <div className="flex items-center space-x-4 mt-2">
-                <Button className="text-blue-500 hover:underline">Like ({post.likes})</Button>
-                <Button className="text-blue-500 hover:underline">Share</Button>
+                <Button
+                  onClick={() => handleLike(post.id, post.communityId)}
+                  className="text-blue-500 hover:underline"
+                >
+                  Like ({post.likes})
+                </Button>
               </div>
             </div>
           ))}
@@ -267,7 +362,8 @@ export default function MainPage() {
       {/* Create Post Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+          <div className="relative bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            {/* Close Button */}
             <Button
               onClick={() => setIsModalOpen(false)}
               className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
@@ -284,7 +380,7 @@ export default function MainPage() {
             <input
               type="file"
               onChange={(e) => setNewPostImage(e.target.files[0])}
-              className="mb-4"
+              className="mb-4 text-black"
             />
             <select
               value={selectedCommunity}
