@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import { FaUserCircle } from "react-icons/fa"; // Default profile icon
+import { FaPlus } from "react-icons/fa"; // Plus icon for the button
 
 const Navbar = () => {
   const { data: session } = useSession();
@@ -125,9 +126,8 @@ const Navbar = () => {
         </div>
       </div>
 
-        
       {/* Second Level Navbar */}
-      <div className="p-2 mt-2 flex justify-center">
+      <div className="p-2 mt-2 flex justify-center items-center">
         <div className="bg-gray/10 inline-flex px-8 py-3 rounded-full gap-8">
           {/* Home/Main Button */}
           <Link 
@@ -187,20 +187,29 @@ const Navbar = () => {
             ) : null}
           </Link>
 
-          {/* Create Recipe Button */}
+          {/* Profile Button */}
           <Link 
-            href="/main/recipes/new" 
+            href="/main/profile" 
             className={`hover:text-gray relative px-2 ${
-              isActive("/main/recipes/new") ? "text-red" : ""
+              isActive("/main/profile") ? "text-red" : ""
             }`}
           >
-            Create recipe
+            Profile
             {/* Active indicator */}
-            {isActive("/main/recipes/new") ? (
+            {isActive("/main/profile") ? (
               <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red rounded-full"></span>
             ) : null}
           </Link>
         </div>
+
+        {/* Create Recipe Button */}
+        <Link
+          href={session ? "/main/recipes/new" : "/signup"} // Redirect to sign-up if not signed in
+          className="ml-4 flex items-center gap-2 bg-blue text-white px-4 py-2 rounded-full hover:bg-red"
+        >
+          <FaPlus size={16} />
+          Create Recipe
+        </Link>
       </div>
     </nav>
   );

@@ -56,6 +56,39 @@ export default function RecipeDetailPage({ params }) {
     setIsSaveModalOpen(true);
   };
 
+  const loadDisqus = () => {
+    if (typeof window !== "undefined") {
+      if (window.DISQUS) {
+        window.DISQUS.reset({
+          reload: true,
+          config: function () {
+            this.page.url = `${window.location.origin}/main/recipes/${unwrappedParams.recipeId}`;
+            this.page.identifier = unwrappedParams.recipeId;
+            this.page.title = recipe?.title || "Recipe";
+          },
+        });
+      } else {
+        window.disqus_config = function () {
+          this.page.url = `${window.location.origin}/main/recipes/${unwrappedParams.recipeId}`;
+          this.page.identifier = unwrappedParams.recipeId;
+          this.page.title = recipe?.title || "Recipe";
+        };
+
+        const d = document;
+        const s = d.createElement("script");
+        s.src = "https://flavorforum.disqus.com/embed.js"; // Replace with your Disqus shortname
+        s.setAttribute("data-timestamp", +new Date());
+        (d.head || d.body).appendChild(s);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (recipe) {
+      loadDisqus();
+    }
+  }, [recipe]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-background">
@@ -208,6 +241,12 @@ export default function RecipeDetailPage({ params }) {
           >
             <FaRegBookmark /> Save to Board
           </Button>
+        </div>
+
+        {/* Disqus Comments Section */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold mb-4">Comments</h2>
+          <div id="disqus_thread"></div>
         </div>
       </div>
 

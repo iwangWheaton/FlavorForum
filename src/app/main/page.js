@@ -4,11 +4,20 @@ import { useSession } from "next-auth/react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, getDoc, orderBy, setDoc, updateDoc, increment } from "firebase/firestore";
 import Button from "@/components/Button";
-import Image from "next/image";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Feed from "@/components/Feed";
+import { useRouter } from "next/navigation";
 
 export default function MainPage() {
   const { data: session } = useSession();
+  const router = useRouter();
+
+  // Redirect to homepage if not signed in
+  useEffect(() => {
+    if (!session) {
+      router.push("/"); // Redirect to homepage
+    }
+  }, [session, router]);
 
   // Get the first name
   const fullName = session?.user?.name || "Chef";
@@ -48,10 +57,17 @@ export default function MainPage() {
       try {
         const communitiesRef = collection(db, "users", session.user.uid, "communities");
         const querySnapshot = await getDocs(communitiesRef);
-        const communities = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const communities = await Promise.all(
+          querySnapshot.docs.map(async (docSnapshot) => {
+            const communityRef = doc(db, "communities", docSnapshot.id);
+            const communitySnap = await getDoc(communityRef);
+            return {
+              id: docSnapshot.id,
+              ...docSnapshot.data(),
+              isTentative: communitySnap.exists() ? communitySnap.data().isTentative : false,
+            };
+          })
+        );
         setUserCommunities(communities);
       } catch (error) {
         console.error("Error fetching user's communities:", error);
@@ -63,24 +79,38 @@ export default function MainPage() {
 
   // Fetch posts based on the selected community
   const fetchPosts = async () => {
-    if (!userCommunities.length) return;
     try {
       const allPosts = [];
-      for (const community of userCommunities) {
-        let postsRef = collection(db, "communities", community.id, "posts");
-
-        // Fetch all posts without sorting here
+      if (selectedCommunity === "all") {
+        // Fetch posts from all communities
+        for (const community of userCommunities) {
+          const postsRef = collection(db, "communities", community.id, "posts");
+          const querySnapshot = await getDocs(postsRef);
+          const communityPosts = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            communityId: community.id,
+            ...doc.data(),
+          }));
+          allPosts.push(...communityPosts);
+        }
+      } else {
+        // Fetch posts from the selected community
+        const postsRef = collection(db, "communities", selectedCommunity, "posts");
         const querySnapshot = await getDocs(postsRef);
         const communityPosts = querySnapshot.docs.map((doc) => ({
           id: doc.id,
-          communityId: community.id,
+          communityId: selectedCommunity,
           ...doc.data(),
         }));
         allPosts.push(...communityPosts);
       }
 
-      // Sort all posts by timestamp in descending order
-      allPosts.sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate());
+      // Sort posts based on the selected option
+      if (selectedOption === "recent") {
+        allPosts.sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate());
+      } else if (selectedOption === "trending") {
+        allPosts.sort((a, b) => b.likes - a.likes);
+      }
 
       console.log("Fetched posts:", allPosts);
       setPosts(allPosts);
@@ -157,7 +187,7 @@ export default function MainPage() {
         content: newPostContent,
         image: imageUrl, // Store the image URL
         userName: session.user.name || "Anonymous",
-        userProfilePicture: session.user.image || "/default-profile.png",
+        userProfilePicture: session.user.image,
         communityName: communityName, // Use the fetched community name
         recipeId: selectedRecipe,
         recipeTitle: recipeDetails?.title || null,
@@ -195,7 +225,7 @@ export default function MainPage() {
     }
 
     try {
-      const userLikeRef = doc(db, "users", session.user.uid, "likes", postId);
+      const userLikeRef = doc(db, "likes", postId);
       const userLikeSnap = await getDoc(userLikeRef);
 
       if (userLikeSnap.exists()) {
@@ -230,6 +260,7 @@ export default function MainPage() {
 
   return (
     <main className="flex bg-background">
+      
       {/* Left-Side Navigation */}
       {isSidebarVisible && (
         <aside className="w-1/4 p-4 bg-gray-100 text-black">
@@ -238,7 +269,10 @@ export default function MainPage() {
             <li className="p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300">
               Home
             </li>
-            <li className="p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300">
+            <li
+              className="p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300"
+              onClick={() => router.push("/main/recipes/trending")} // Link to trending recipes
+            >
               Popular
             </li>
           </ul>
@@ -255,12 +289,24 @@ export default function MainPage() {
             {userCommunities.map((community) => (
               <li
                 key={community.id}
-                className={`p-2 bg-gray-200 rounded cursor-pointer hover:bg-gray-300 ${
-                  selectedCommunity === community.id ? "bg-blue-500 text-blue" : ""
-                }`}
-                onClick={() => handleCommunitySelect(community.id)}
+                className="p-2 bg-gray-200 rounded flex items-center hover:bg-gray-300"
               >
-                {community.name}
+                <span
+                  className={`cursor-pointer ${
+                    selectedCommunity === community.id ? "text-blue font-semibold" : ""
+                  }`}
+                  onClick={() => handleCommunitySelect(community.id)}
+                >
+                  {community.name}
+                </span>
+                {!community.isTentative && (
+                  <button
+                    onClick={() => router.push(`/main/community/${community.id}`)}
+                    className="bg-blue text-white px-2 py-1 rounded hover:bg-red ml-2"
+                  >
+                    &gt;
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -271,7 +317,7 @@ export default function MainPage() {
       <section className="flex-grow p-6">
         {/* Welcome Message */}
         <h1 className="text-3xl font-bold mb-4 text-black">Welcome Back, {firstName}! 👨‍🍳</h1>
-
+      
         {/* Sorting Options */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex space-x-4">
@@ -297,66 +343,14 @@ export default function MainPage() {
           </Button>
         </div>
 
-        {/* Posts Section */}
-        <div className="space-y-4 text-black">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="p-4 bg-white rounded shadow hover:shadow-md cursor-pointer"
-            >
-              <div className="flex items-center mb-2">
-                <Image
-                  src={post.userProfilePicture}
-                  alt="User Profile"
-                  width={40}
-                  height={40}
-                  className="w-8 h-8 rounded-full mr-2"
-                />
-                <div>
-                  <h2 className="text-sm font-semibold">{post.userName}</h2>
-                  <h2 className="text-xs text-gray-500">
-                    {post.communityName} • {post.timestamp?.toDate().toLocaleString()}
-                  </h2>
-                </div>
-              </div>
-              <h3 className="text-lg font-bold">{post.content}</h3>
-              {post.image && (
-                <Image
-                  src={post.image}
-                  alt="Post Image"
-                  width={400}
-                  height={300}
-                  className="rounded mt-2"
-                />
-              )}
-              {post.recipeId && (
-                <div
-                  onClick={() => window.location.href = `/main/recipes/${post.recipeId}`}
-                  className="mt-4 p-4 bg-gray-100 rounded cursor-pointer hover:bg-gray-200"
-                >
-                  <h4 className="text-md font-semibold">{post.recipeTitle} </h4>
-                  {post.recipeImage && (
-                    <Image
-                      src={post.recipeImage}
-                      alt={post.recipeTitle}
-                      width={100}
-                      height={100}
-                      className="rounded"
-                    />
-                  )}
-                </div>
-              )}
-              <div className="flex items-center space-x-4 mt-2">
-                <Button
-                  onClick={() => handleLike(post.id, post.communityId)}
-                  className="text-blue-500 hover:underline"
-                >
-                  Like ({post.likes})
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Feed Component */}
+        <Feed
+          posts={posts.map((post) => ({
+            ...post,
+            userProfilePicture: post.userProfilePicture || "/images/default-profile.png", // Fallback for user profile picture
+          }))}
+          handleLike={(postId) => handleLike(postId, selectedCommunity)}
+        />
       </section>
 
       {/* Create Post Modal */}

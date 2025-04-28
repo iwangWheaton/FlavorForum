@@ -181,6 +181,12 @@ export default function Profile() {
             <p className="text-gray/70">Organize your saved recipes</p>
           </div>
         </Link>
+        <Link href="/main/profile/recipes">
+          <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition cursor-pointer">
+            <h2 className="text-xl font-semibold">My Created Recipes</h2>
+            <p className="text-gray/70">See your recipes that you've created</p>
+          </div>
+        </Link>
       </div>
       </div>
     </div>
