@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Button from "@/components/Button";
 import Image from "next/image";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, increment, getDoc, setDoc, collection, deleteDoc, getDocs, serverTimestamp, query, where, addDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, updateDoc, increment, setDoc, collection, deleteDoc, getDocs, serverTimestamp, addDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { useSession } from "next-auth/react";
 import { FaUtensilSpoon } from "react-icons/fa"; // Whisk icon
 

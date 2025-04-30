@@ -2,13 +2,10 @@
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { addRecipe } from "@/lib/recipeService";
 import { uploadRecipeImage } from "@/lib/uploadService";
 import Image from "next/image";
-import { auth, db } from "@/lib/firebase";
-import { useEffect } from "react";
+import { db } from "@/lib/firebase";
 import { doc, setDoc, collection, addDoc } from "firebase/firestore"; // Import Firestore methods
-import { v4 as uuidv4 } from "uuid";
 
 export default function CreateRecipe() {
   const { data: session } = useSession();

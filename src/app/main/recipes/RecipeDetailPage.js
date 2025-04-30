@@ -10,7 +10,7 @@ import { doc, getDoc, deleteDoc } from "firebase/firestore";
 import Button from "@/components/Button";
 import SaveToBoardModal from "@/components/SaveToBoardModal";
 import { useSession } from "next-auth/react";
-import { FaBookmark, FaRegBookmark, FaEllipsisV } from "react-icons/fa";
+import { FaRegBookmark, FaEllipsisV } from "react-icons/fa";
 
 export default function RecipeDetailPage({ params }) {
   const router = useRouter();

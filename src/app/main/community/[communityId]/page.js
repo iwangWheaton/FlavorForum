@@ -1,7 +1,6 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Button from "@/components/Button";
 import Image from "next/image";
@@ -12,7 +11,6 @@ import Feed from "@/components/Feed";
 
 export default function CommunityPage({ params: paramsPromise }) {
   const { data: session } = useSession();
-  const router = useRouter();
   const [params, setParams] = useState(null);
   const [joined, setJoined] = useState(false);
   const [community, setCommunity] = useState(null);
