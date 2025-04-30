@@ -16,7 +16,6 @@ export default function CommunityPage({ params: paramsPromise }) {
   const [params, setParams] = useState(null);
   const [joined, setJoined] = useState(false);
   const [community, setCommunity] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [feedSort, setFeedSort] = useState("recent");
   const [posts, setPosts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,9 +38,20 @@ export default function CommunityPage({ params: paramsPromise }) {
       });
 
       // Increment the community's member count
+      const communitySnap = await getDoc(communityRef);
+      const currentNumMembers = communitySnap.exists() ? communitySnap.data().numMembers || 0 : 0;
+
       await updateDoc(communityRef, {
         numMembers: increment(1),
       });
+
+      // If the community reaches 2 members, update isTentative to false
+      if (currentNumMembers + 1 >= 2 && communitySnap.data().isTentative) {
+        await updateDoc(communityRef, {
+          isTentative: false,
+        });
+        alert("The community is now published and has its own feed!");
+      }
 
       setJoined(true);
       alert("You have successfully joined the community!");
@@ -190,34 +200,9 @@ export default function CommunityPage({ params: paramsPromise }) {
   };
 
   // Handle liking a post
-  const handleLike = async (postId) => {
-    try {
-      // Log the paths being accessed for debugging
-      console.log(`Updating likes for postId: ${postId} in communityId: ${params.communityId}`);
+ 
 
-      // Reference the post in the community's posts subcollection
-      const postRef = doc(db, "communities", params.communityId, "posts", postId);
-
-      // Increment the like count in the database
-      await updateDoc(postRef, {
-        likes: increment(1),
-      });
-
-      // Update the like count in the main posts collection
-      const mainPostRef = doc(db, "posts", postId);
-      await updateDoc(mainPostRef, {
-        likes: increment(1),
-      });
-
-      // Refetch posts to reflect the updated like count
-      await fetchPosts();
-    } catch (error) {
-      console.error("Error liking post:", error);
-      alert("Failed to like the post. Please check your permissions.");
-    }
-  };
-
-  if (loading || !community) {
+  if ( !community) {
     return <h1 className="text-gray-500 p-6">Loading...</h1>;
   }
 
@@ -258,7 +243,7 @@ export default function CommunityPage({ params: paramsPromise }) {
             <h2 className="text-xl font-bold text-yellow-800">This community is tentative!</h2>
             <p className="text-black mt-2">
               Join this community to endorse it so it can get published. This community needs at least 
-              <strong> 3 people</strong> to endorse it in order to be published and have its own feed!
+              <strong> 2 people</strong> to endorse it in order to be published and have its own feed!
             </p>
           </div>
         ) : (
@@ -297,7 +282,7 @@ export default function CommunityPage({ params: paramsPromise }) {
                 ...post,
                 userProfilePicture: post.userProfilePicture || "/images/default-profile.png",
               }))}
-              handleLike={handleLike}
+              handleLike={(postId) => handleLike(postId)}
             />
           </section>
         )}

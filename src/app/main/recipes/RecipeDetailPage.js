@@ -6,11 +6,11 @@ import { use } from "react";
 import Image from "next/image";
 import StarComp from "@/app/main/reviews/StarRating/starComp";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, deleteDoc } from "firebase/firestore";
 import Button from "@/components/Button";
 import SaveToBoardModal from "@/components/SaveToBoardModal";
 import { useSession } from "next-auth/react";
-import { FaBookmark, FaRegBookmark } from "react-icons/fa";
+import { FaBookmark, FaRegBookmark, FaEllipsisV } from "react-icons/fa";
 
 export default function RecipeDetailPage({ params }) {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function RecipeDetailPage({ params }) {
   const [error, setError] = useState(null);
   const unwrappedParams = use(params);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchRecipe = async () => {
@@ -118,6 +119,22 @@ export default function RecipeDetailPage({ params }) {
     ? recipe.instructions.split('\n').filter(line => line.trim() !== '')
     : [];
 
+  const handleDeleteRecipe = async () => {
+    if (!confirm("Are you sure you want to delete this recipe? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      // Delete the recipe from the database
+      await deleteDoc(doc(db, "recipes", unwrappedParams.recipeId));
+      alert("Recipe deleted successfully.");
+      router.push("/main/recipes"); // Redirect to the recipes page
+    } catch (error) {
+      console.error("Error deleting recipe:", error);
+      alert("Failed to delete the recipe. Please try again.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-6">
@@ -149,21 +166,45 @@ export default function RecipeDetailPage({ params }) {
 
         {/* Recipe details */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex flex-wrap gap-4 mb-6">
-            <div className="bg-blue bg-opacity-10 px-4 py-2 rounded-lg">
-              <span className="text-blue font-semibold">Time:</span>
-              <span className="ml-2 text-gray">{recipe.cookingTime || "-"} mins</span>
+          <div className="flex flex-wrap gap-4 mb-6 items-center justify-between">
+            <div className="flex flex-wrap gap-4">
+              <div className="bg-blue bg-opacity-10 px-4 py-2 rounded-lg">
+                <span className="text-blue font-semibold">Time:</span>
+                <span className="ml-2 text-gray">{recipe.cookingTime || "-"} mins</span>
+              </div>
+              
+              <div className="bg-blue bg-opacity-10 px-4 py-2 rounded-lg">
+                <span className="text-blue font-semibold">Difficulty:</span>
+                <span className="ml-2 text-gray">{recipe.difficulty || "Medium"}</span>
+              </div>
+              
+              <div className="bg-blue bg-opacity-10 px-4 py-2 rounded-lg">
+                <span className="text-blue font-semibold">Meal Type:</span>
+                <span className="ml-2 text-gray">{recipe.mealType || "Main Course"}</span>
+              </div>
             </div>
-            
-            <div className="bg-blue bg-opacity-10 px-4 py-2 rounded-lg">
-              <span className="text-blue font-semibold">Difficulty:</span>
-              <span className="ml-2 text-gray">{recipe.difficulty || "Medium"}</span>
-            </div>
-            
-            <div className="bg-blue bg-opacity-10 px-4 py-2 rounded-lg">
-              <span className="text-blue font-semibold">Meal Type:</span>
-              <span className="ml-2 text-gray">{recipe.mealType || "Main Course"}</span>
-            </div>
+
+            {/* Three-dot menu */}
+            {recipe.userId === session?.user?.uid && (
+              <div className="relative">
+                <Button
+                  onClick={() => setIsMenuOpen((prev) => !prev)}
+                  className="text-black hover:text-black"
+                >
+                  <FaEllipsisV size={20} />
+                </Button>
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 bg-white border rounded shadow-lg w-40 z-50">
+                    <Button
+                      onClick={handleDeleteRecipe}
+                      className="block w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-100"
+                    >
+                      Delete Recipe
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Dietary tags */}
@@ -227,14 +268,14 @@ export default function RecipeDetailPage({ params }) {
         </div>
 
         {/* Actions */}
-        <div className="mt-8 flex justify-between">
-          <Button 
-            onClick={() => router.push("/main/recipes")} 
+        <div className="mt-8 flex justify-between items-center relative">
+          <Button
+            onClick={() => router.push("/main/recipes")}
             className="bg-red hover:bg-red/90"
           >
             Back to Recipes
           </Button>
-          
+
           <Button
             onClick={handleSaveClick}
             className="flex items-center gap-2 bg-blue hover:bg-blue/90"

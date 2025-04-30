@@ -61,14 +61,23 @@ export default function MainPage() {
           querySnapshot.docs.map(async (docSnapshot) => {
             const communityRef = doc(db, "communities", docSnapshot.id);
             const communitySnap = await getDoc(communityRef);
-            return {
-              id: docSnapshot.id,
-              ...docSnapshot.data(),
-              isTentative: communitySnap.exists() ? communitySnap.data().isTentative : false,
-            };
+
+            // Ensure the community data is fetched fresh from Firestore
+            if (communitySnap.exists()) {
+              return {
+                id: docSnapshot.id,
+                ...docSnapshot.data(),
+                name: communitySnap.data().name || "Unnamed Community", // Fallback for missing names
+                isTentative: communitySnap.data().isTentative || false,
+              };
+            } else {
+              return null; // Skip communities that no longer exist
+            }
           })
         );
-        setUserCommunities(communities);
+
+        // Filter out any null values (communities that no longer exist)
+        setUserCommunities(communities.filter((community) => community !== null));
       } catch (error) {
         console.error("Error fetching user's communities:", error);
       }
@@ -76,6 +85,15 @@ export default function MainPage() {
 
     fetchUserCommunities();
   }, [session]);
+
+  const handleCommunitySelect = async (communityId) => {
+    setSelectedCommunity(communityId);
+    if (typeof window !== "undefined") {
+      // Save the selection to localStorage only in the browser
+      localStorage.setItem("selectedCommunity", communityId);
+    }
+    await fetchPosts(); // Ensure the feed refreshes after updating the community
+  };
 
   // Fetch posts based on the selected community
   const fetchPosts = async () => {
@@ -108,11 +126,10 @@ export default function MainPage() {
       // Sort posts based on the selected option
       if (selectedOption === "recent") {
         allPosts.sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate());
-      } else if (selectedOption === "trending") {
+      } else if (selectedOption === "top") {
         allPosts.sort((a, b) => b.likes - a.likes);
       }
 
-      console.log("Fetched posts:", allPosts);
       setPosts(allPosts);
     } catch (error) {
       console.error("Error fetching posts:", error);
@@ -142,14 +159,6 @@ export default function MainPage() {
   useEffect(() => {
     fetchUserRecipes();
   }, [session]);
-
-  const handleCommunitySelect = (communityId) => {
-    setSelectedCommunity(communityId);
-    if (typeof window !== "undefined") {
-      // Save the selection to localStorage only in the browser
-      localStorage.setItem("selectedCommunity", communityId);
-    }
-  };
 
   // Handle creating a new post
   const handleCreatePost = async () => {
@@ -217,50 +226,10 @@ export default function MainPage() {
     }
   };
 
-  // Handle liking a post
-  const handleLike = async (postId, communityId) => {
-    if (!session || !session.user) {
-      alert("You must be logged in to like a post.");
-      return;
-    }
-
-    try {
-      const userLikeRef = doc(db, "likes", postId);
-      const userLikeSnap = await getDoc(userLikeRef);
-
-      if (userLikeSnap.exists()) {
-        alert("You have already liked this post.");
-        return;
-      }
-
-      // Reference the post in the community's posts subcollection
-      const postRef = doc(db, "communities", communityId, "posts", postId);
-
-      // Increment the like count in the database
-      await updateDoc(postRef, {
-        likes: increment(1),
-      });
-
-      // Update the like count in the main posts collection
-      const mainPostRef = doc(db, "posts", postId);
-      await updateDoc(mainPostRef, {
-        likes: increment(1),
-      });
-
-      // Record the like in the user's likes subcollection
-      await setDoc(userLikeRef, { likedAt: serverTimestamp() });
-
-      // Refetch posts to reflect the updated like count
-      await fetchPosts();
-    } catch (error) {
-      console.error("Error liking post:", error);
-      alert("Failed to like the post. Please try again.");
-    }
-  };
+  
 
   return (
     <main className="flex bg-background">
-      
       {/* Left-Side Navigation */}
       {isSidebarVisible && (
         <aside className="w-1/4 p-4 bg-gray-100 text-black">
@@ -277,7 +246,7 @@ export default function MainPage() {
             </li>
           </ul>
           <ul className="space-y-2">
-          <h2 className="text-sm font-semibold mt-4">Your Communities</h2>
+            <h2 className="text-sm font-semibold mt-4">Your Communities</h2>
             <li
               className={`p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300 ${
                 selectedCommunity === "all" ? "bg-blue-500 text-blue" : ""
@@ -291,21 +260,24 @@ export default function MainPage() {
                 key={community.id}
                 className="p-2 bg-gray-200 rounded flex items-center hover:bg-gray-300"
               >
-                <span
-                  className={`cursor-pointer ${
-                    selectedCommunity === community.id ? "text-blue font-semibold" : ""
-                  }`}
-                  onClick={() => handleCommunitySelect(community.id)}
-                >
-                  {community.name}
-                </span>
                 {!community.isTentative && (
-                  <button
-                    onClick={() => router.push(`/main/community/${community.id}`)}
-                    className="bg-blue text-white px-2 py-1 rounded hover:bg-red ml-2"
-                  >
-                    &gt;
-                  </button>
+                  <div>
+                    <span
+                      className={`cursor-pointer ${
+                        selectedCommunity === community.id ? "text-blue font-semibold" : ""
+                      }`}
+                      onClick={() => handleCommunitySelect(community.id)}
+                    >
+                      {community.name}
+                    </span>
+                    <button
+                      onClick={() => router.push(`/main/community/${community.id}`)}
+                      className="bg-blue text-white px-2 py-1 rounded hover:bg-red ml-2"
+                      title="Click to go to this community" // Added hover message
+                    >
+                      &gt;
+                    </button>
+                  </div>
                 )}
               </li>
             ))}
@@ -314,14 +286,14 @@ export default function MainPage() {
       )}
 
       {/* Main Content */}
-      <section className="flex-grow p-6">
+      <section className="flex-grow p-6 bg-grey shadow-md rounded-lg ml-4 mr-6"> {/* Adjusted margins */}
         {/* Welcome Message */}
         <h1 className="text-3xl font-bold mb-4 text-black">Welcome Back, {firstName}! 👨‍🍳</h1>
-      
+
         {/* Sorting Options */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex space-x-4">
-            {["for you", "recent", "trending"].map((option) => (
+            {["recent", "top"].map((option) => (
               <button
                 key={option}
                 onClick={() => setSelectedOption(option)}
@@ -344,13 +316,25 @@ export default function MainPage() {
         </div>
 
         {/* Feed Component */}
-        <Feed
-          posts={posts.map((post) => ({
-            ...post,
-            userProfilePicture: post.userProfilePicture || "/images/default-profile.png", // Fallback for user profile picture
-          }))}
-          handleLike={(postId) => handleLike(postId, selectedCommunity)}
-        />
+        {posts.length > 0 ? (
+          <Feed
+            posts={posts.map((post) => ({
+              ...post,
+              userProfilePicture: post.userProfilePicture || "/images/default-profile.png", // Fallback for user profile picture
+            }))}
+            handleLike={(postId) => handleLike(postId, selectedCommunity)}
+          />
+        ) : (
+          <div>
+          <h2 className="text-gray">No posts available. Join a community to start seeing posts!</h2>
+          <Button
+              onClick={() => router.push("/communities")}
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+            Join a community!
+          </Button>
+          </div>
+        )}
       </section>
 
       {/* Create Post Modal */}

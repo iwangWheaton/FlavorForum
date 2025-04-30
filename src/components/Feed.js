@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import Button from "@/components/Button";
 import Image from "next/image";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, increment, getDoc, setDoc, collection, deleteDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, increment, getDoc, setDoc, collection, deleteDoc, getDocs, serverTimestamp, query, where, addDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { useSession } from "next-auth/react";
 import { FaUtensilSpoon } from "react-icons/fa"; // Whisk icon
 
 export default function Feed({ posts, currentUserId }) {
   const [menuOpen, setMenuOpen] = useState(null); // Track which post's menu is open
+  const [commentMenuOpen, setCommentMenuOpen] = useState({}); // Track which comment's menu is open
   const [comments, setComments] = useState({}); // Store comments for each post
   const [newComment, setNewComment] = useState({}); // Track new comments for each post
   const [expandedComments, setExpandedComments] = useState({}); // Track expanded state for each post
@@ -52,6 +53,21 @@ export default function Feed({ posts, currentUserId }) {
     }
   };
 
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!window.confirm("Are you sure you want to delete this comment?")) return;
+
+    try {
+      const commentRef = doc(db, "posts", postId, "comments", commentId);
+      await deleteDoc(commentRef);
+
+      alert("Comment deleted successfully!");
+      fetchComments(postId); // Refresh comments for the post
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      alert("Failed to delete the comment. Please try again.");
+    }
+  };
+
   const handleDeletePost = async (postId, communityId) => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
 
@@ -76,14 +92,37 @@ export default function Feed({ posts, currentUserId }) {
     }
   };
 
+  const fetchUserLikes = async () => {
+    if (!session || !session.user) return;
+
+    try {
+      const likesRef = collection(db, "users", session.user.uid, "likes");
+      const likedPostsSnapshot = await getDocs(likesRef);
+
+      const userLikes = {};
+      likedPostsSnapshot.forEach((doc) => {
+        userLikes[doc.id] = true;
+      });
+
+      setLikedPosts(userLikes); // Update liked posts state
+    } catch (error) {
+      console.error("Error fetching user likes:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserLikes(); // Fetch user likes on component mount
+  }, [session]);
+
   const handleLike = async (postId, communityId) => {
     if (!session || !session.user) {
       alert("You must be logged in to like or unlike a post.");
       return;
     }
 
-    const userLikeRef = doc(db, "posts", postId, "likes", session.user.uid);
-    const userLikeSnap = await getDoc(userLikeRef);
+    const userLikeRef = doc(db, "users", session.user.uid, "likes", postId);
+    const postRef = doc(db, "posts", postId);
+    const communityPostRef = doc(db, "communities", communityId, "posts", postId);
 
     if (likedPosts[postId]) {
       // Unlike the post
@@ -96,20 +135,12 @@ export default function Feed({ posts, currentUserId }) {
           )
         );
 
-        // Remove the like from Firestore
+        // Remove the like from the user's likes subcollection
         await deleteDoc(userLikeRef);
 
-        // Decrement the like count in the community's posts subcollection
-        const postRef = doc(db, "communities", communityId, "posts", postId);
-        await updateDoc(postRef, {
-          likes: increment(-1),
-        });
-
-        // Decrement the like count in the main posts collection
-        const mainPostRef = doc(db, "posts", postId);
-        await updateDoc(mainPostRef, {
-          likes: increment(-1),
-        });
+        // Decrement the like count in Firestore
+        await updateDoc(postRef, { likes: increment(-1) });
+        await updateDoc(communityPostRef, { likes: increment(-1) });
       } catch (error) {
         console.error("Error unliking post:", error);
 
@@ -132,22 +163,12 @@ export default function Feed({ posts, currentUserId }) {
           )
         );
 
-        if (!userLikeSnap.exists()) {
-          // Record the like in Firestore
-          await setDoc(userLikeRef, { likedAt: serverTimestamp() });
+        // Add the like to the user's likes subcollection
+        await setDoc(userLikeRef, { likedAt: serverTimestamp() });
 
-          // Increment the like count in the community's posts subcollection
-          const postRef = doc(db, "communities", communityId, "posts", postId);
-          await updateDoc(postRef, {
-            likes: increment(1),
-          });
-
-          // Increment the like count in the main posts collection
-          const mainPostRef = doc(db, "posts", postId);
-          await updateDoc(mainPostRef, {
-            likes: increment(1),
-          });
-        }
+        // Increment the like count in Firestore
+        await updateDoc(postRef, { likes: increment(1) });
+        await updateDoc(communityPostRef, { likes: increment(1) });
       } catch (error) {
         console.error("Error liking post:", error);
 
@@ -194,6 +215,7 @@ export default function Feed({ posts, currentUserId }) {
           key={post.id}
           className="p-4 bg-white rounded shadow hover:shadow-md cursor-pointer relative"
         >
+          {/* Post Header */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Image
@@ -206,7 +228,7 @@ export default function Feed({ posts, currentUserId }) {
               <div>
                 <h2 className="text-sm font-semibold">{post.userName}</h2>
                 <h2 className="text-xs text-gray-500">
-                  {formatTimestamp(post.timestamp)}
+                  {post.communityName || "Unknown Community"} * {formatTimestamp(post.timestamp)}
                 </h2>
               </div>
             </div>
@@ -235,6 +257,8 @@ export default function Feed({ posts, currentUserId }) {
               </div>
             )}
           </div>
+
+          {/* Post Content */}
           <h3 className="text-lg font-bold">{post.content}</h3>
           {post.image && (
             <Image
@@ -245,6 +269,20 @@ export default function Feed({ posts, currentUserId }) {
               className="rounded mt-2"
             />
           )}
+
+          {/* Recipe Link */}
+          {post.recipeId && post.recipeTitle && (
+            <div className="mt-4">
+              <a
+                href={`/main/recipes/${post.recipeId}`}
+                className="text-blue-500 hover:underline text-sm"
+              >
+                Click to view "{post.recipeTitle}"
+              </a>
+            </div>
+          )}
+
+          {/* Comments Section */}
           <div className="mt-4">
             <h4 className="text-md font-semibold mb-2">Comments</h4>
             <div className="space-y-2">
@@ -255,24 +293,51 @@ export default function Feed({ posts, currentUserId }) {
                     .map((comment) => (
                       <div
                         key={comment.id}
-                        className="p-2 bg-gray-100 rounded flex items-start"
+                        className="p-2 bg-gray-100 rounded flex items-center justify-between"
                       >
-                        <Image
-                          src={comment.userProfilePicture || "/images/default-profile.png"} // Fallback for commenter profile picture
-                          alt="Commenter Profile"
-                          width={30}
-                          height={30}
-                          className="w-6 h-6 rounded-full mr-2"
-                        />
-                        <div>
-                          <p className="text-sm font-semibold">
-                            {comment.userName}
-                          </p>
-                          <p className="text-sm">{comment.content}</p>
-                          <p className="text-xs text-gray-500">
-                            {formatTimestamp(comment.timestamp)}
-                          </p>
+                        <div className="flex items-start">
+                          <Image
+                            src={comment.userProfilePicture || "/images/default-profile.png"} // Fallback for commenter profile picture
+                            alt="Commenter Profile"
+                            width={30}
+                            height={30}
+                            className="w-6 h-6 rounded-full mr-2"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold">{comment.userName}</p>
+                            <p className="text-sm">{comment.content}</p>
+                            <p className="text-xs text-gray-500">
+                              {formatTimestamp(comment.timestamp)}
+                            </p>
+                          </div>
                         </div>
+                        {comment.userId === currentUserId && (
+                          <div className="relative">
+                            <button
+                              onClick={() =>
+                                setCommentMenuOpen((prev) => ({
+                                  ...prev,
+                                  [comment.id]: !prev[comment.id],
+                                }))
+                              }
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              &#x22EE; {/* Three-dot menu */}
+                            </button>
+                            {commentMenuOpen[comment.id] && (
+                              <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-lg z-10">
+                                <button
+                                  onClick={() =>
+                                    handleDeleteComment(post.id, comment.id)
+                                  }
+                                  className="block w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-100"
+                                >
+                                  Delete Comment
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   <button
@@ -287,27 +352,54 @@ export default function Feed({ posts, currentUserId }) {
                   {comments[post.id]?.map((comment) => (
                     <div
                       key={comment.id}
-                      className="p-2 bg-gray-100 rounded flex items-start"
+                      className="p-2 bg-gray-100 rounded flex items-center justify-between"
                     >
-                      <Image
-                        src={comment.userProfilePicture || "/images/default-profile.png"} // Fallback for commenter profile picture
-                        alt="Commenter Profile"
-                        width={30}
-                        height={30}
-                        className="w-6 h-6 rounded-full mr-2"
-                      />
-                      <div>
-                        <p className="text-sm font-semibold">
-                          {comment.userName}
-                        </p>
-                        <p className="text-sm">{comment.content}</p>
-                        <p className="text-xs text-gray-500">
-                          {formatTimestamp(comment.timestamp)}
-                        </p>
+                      <div className="flex items-start">
+                        <Image
+                          src={comment.userProfilePicture || "/images/default-profile.png"} // Fallback for commenter profile picture
+                          alt="Commenter Profile"
+                          width={30}
+                          height={30}
+                          className="w-6 h-6 rounded-full mr-2"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold">{comment.userName}</p>
+                          <p className="text-sm">{comment.content}</p>
+                          <p className="text-xs text-gray-500">
+                            {formatTimestamp(comment.timestamp)}
+                          </p>
+                        </div>
                       </div>
+                      {comment.userId === currentUserId && (
+                        <div className="relative">
+                          <button
+                            onClick={() =>
+                              setCommentMenuOpen((prev) => ({
+                                ...prev,
+                                [comment.id]: !prev[comment.id],
+                              }))
+                            }
+                            className="text-gray-500 hover:text-gray-700"
+                          >
+                            &#x22EE; {/* Three-dot menu */}
+                          </button>
+                          {commentMenuOpen[comment.id] && (
+                            <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-lg z-10">
+                              <button
+                                onClick={() =>
+                                  handleDeleteComment(post.id, comment.id)
+                                }
+                                className="block w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-100"
+                              >
+                                Delete Comment
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
-                  {comments[post.id]?.length > 5 && (
+                  {comments[post.id]?.length > 4 && (
                     <button
                       onClick={() => toggleComments(post.id)}
                       className="text-blue-500 hover:underline text-sm"
@@ -318,6 +410,8 @@ export default function Feed({ posts, currentUserId }) {
                 </>
               )}
             </div>
+
+            {/* Add Comment Section */}
             <div className="mt-2 flex items-center space-x-2">
               <button
                 onClick={() => handleLike(post.id, post.communityId)}
