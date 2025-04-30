@@ -233,20 +233,8 @@ export default function MainPage() {
       {/* Left-Side Navigation */}
       {isSidebarVisible && (
         <aside className="w-1/4 p-4 bg-gray-100 text-black">
-          <h2 className="text-lg font-bold mb-4">Navigation</h2>
+          <h2 className="text-lg font-bold mb-4">Your Communities</h2>
           <ul className="space-y-2">
-            <li className="p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300">
-              Home
-            </li>
-            <li
-              className="p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300"
-              onClick={() => router.push("/main/recipes/trending")} // Link to trending recipes
-            >
-              Popular
-            </li>
-          </ul>
-          <ul className="space-y-2">
-            <h2 className="text-sm font-semibold mt-4">Your Communities</h2>
             <li
               className={`p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300 ${
                 selectedCommunity === "all" ? "bg-blue-500 text-blue" : ""
