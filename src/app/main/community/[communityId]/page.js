@@ -8,6 +8,7 @@ import Image from "next/image";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, updateDoc, increment, deleteDoc, collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Feed from "@/components/Feed";
 
 export default function CommunityPage({ params: paramsPromise }) {
   const { data: session } = useSession();
@@ -15,12 +16,76 @@ export default function CommunityPage({ params: paramsPromise }) {
   const [params, setParams] = useState(null);
   const [joined, setJoined] = useState(false);
   const [community, setCommunity] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [feedSort, setFeedSort] = useState("recent");
   const [posts, setPosts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostImage, setNewPostImage] = useState(null);
+
+  const handleJoin = async () => {
+    if (!session || !session.user) {
+      alert("You must be logged in to join a community.");
+      return;
+    }
+
+    try {
+      const userCommunityRef = doc(db, "users", session.user.uid, "communities", params.communityId);
+      const communityRef = doc(db, "communities", params.communityId);
+
+      // Add the user to the community's members
+      await setDoc(userCommunityRef, {
+        joinedAt: serverTimestamp(),
+      });
+
+      // Increment the community's member count
+      const communitySnap = await getDoc(communityRef);
+      const currentNumMembers = communitySnap.exists() ? communitySnap.data().numMembers || 0 : 0;
+
+      await updateDoc(communityRef, {
+        numMembers: increment(1),
+      });
+
+      // If the community reaches 2 members, update isTentative to false
+      if (currentNumMembers + 1 >= 2 && communitySnap.data().isTentative) {
+        await updateDoc(communityRef, {
+          isTentative: false,
+        });
+        alert("The community is now published and has its own feed!");
+      }
+
+      setJoined(true);
+      alert("You have successfully joined the community!");
+    } catch (error) {
+      console.error("Error joining community:", error);
+      alert("Failed to join the community. Please try again.");
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!session || !session.user) {
+      alert("You must be logged in to leave a community.");
+      return;
+    }
+
+    try {
+      const userCommunityRef = doc(db, "users", session.user.uid, "communities", params.communityId);
+      const communityRef = doc(db, "communities", params.communityId);
+
+      // Remove the user from the community's members
+      await deleteDoc(userCommunityRef);
+
+      // Decrement the community's member count
+      await updateDoc(communityRef, {
+        numMembers: increment(-1),
+      });
+
+      setJoined(false);
+      alert("You have successfully left the community.");
+    } catch (error) {
+      console.error("Error leaving community:", error);
+      alert("Failed to leave the community. Please try again.");
+    }
+  };
 
   // Unwrap params
   useEffect(() => {
@@ -36,7 +101,8 @@ export default function CommunityPage({ params: paramsPromise }) {
     if (!session || !session.user) return;
     if (params?.communityId) {
       const fetchCommunity = async () => {
-        setLoading(true);
+        if (!params?.communityId) return;
+
         try {
           const docRef = doc(db, "communities", params.communityId);
           const docSnap = await getDoc(docRef);
@@ -50,8 +116,6 @@ export default function CommunityPage({ params: paramsPromise }) {
           }
         } catch (error) {
           console.error("Error fetching community:", error);
-        } finally {
-          setLoading(false);
         }
       };
 
@@ -76,7 +140,7 @@ export default function CommunityPage({ params: paramsPromise }) {
         id: doc.id,
         ...doc.data(),
       }));
-      setPosts(communityPosts);
+      setPosts(communityPosts); // Only posts for the specific community
     } catch (error) {
       console.error("Error fetching posts:", error);
     }
@@ -109,7 +173,7 @@ export default function CommunityPage({ params: paramsPromise }) {
         content: newPostContent,
         image: imageUrl,
         userName: session?.user?.name || "Anonymous",
-        userProfilePicture: session?.user?.image || "/default-profile.png",
+        userProfilePicture: session?.user?.image || "/images/default-profile.png",
         timestamp: serverTimestamp(),
         likes: 0,
         comments: [],
@@ -136,34 +200,9 @@ export default function CommunityPage({ params: paramsPromise }) {
   };
 
   // Handle liking a post
-  const handleLike = async (postId) => {
-    try {
-      // Log the paths being accessed for debugging
-      console.log(`Updating likes for postId: ${postId} in communityId: ${params.communityId}`);
+ 
 
-      // Reference the post in the community's posts subcollection
-      const postRef = doc(db, "communities", params.communityId, "posts", postId);
-
-      // Increment the like count in the database
-      await updateDoc(postRef, {
-        likes: increment(1),
-      });
-
-      // Update the like count in the main posts collection
-      const mainPostRef = doc(db, "posts", postId);
-      await updateDoc(mainPostRef, {
-        likes: increment(1),
-      });
-
-      // Refetch posts to reflect the updated like count
-      await fetchPosts();
-    } catch (error) {
-      console.error("Error liking post:", error);
-      alert("Failed to like the post. Please check your permissions.");
-    }
-  };
-
-  if (loading || !community) {
+  if ( !community) {
     return <h1 className="text-gray-500 p-6">Loading...</h1>;
   }
 
@@ -173,7 +212,7 @@ export default function CommunityPage({ params: paramsPromise }) {
         {/* Community Banner */}
         <div className="relative w-full h-64">
           <Image
-            src={community.image || "/images/placeholder.jpg"}
+            src={community.image}
             alt={community.name || "Community Image"}
             fill
             style={{ objectFit: "cover" }}
@@ -198,79 +237,55 @@ export default function CommunityPage({ params: paramsPromise }) {
           </Button>
         </div>
 
-        {/* Posts Section */}
-        <section className="mt-6">
-          <h2 className="text-2xl font-bold mb-4">Community Feed</h2>
-
-          {/* Sorting Options */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex space-x-4">
-              {["recent", "popular"].map((option) => (
-                <button
-                  key={option}
-                  onClick={() => setFeedSort(option)}
-                  className={`px-4 py-2 rounded ${
-                    feedSort === option
-                      ? "bg-black text-white"
-                      : "bg-gray-200 text-black"
-                  }`}
-                >
-                  {option.charAt(0).toUpperCase() + option.slice(1)}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Create Post
-            </button>
+        {/* Tentative Community Message */}
+        {community.isTentative ? (
+          <div className="mt-6 bg-yellow-100 p-4 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-yellow-800">This community is tentative!</h2>
+            <p className="text-black mt-2">
+              Join this community to endorse it so it can get published. This community needs at least 
+              <strong> 2 people</strong> to endorse it in order to be published and have its own feed!
+            </p>
           </div>
+        ) : (
+          /* Posts Section */
+          <section className="mt-6">
+            <h2 className="text-2xl font-bold mb-4">Community Feed</h2>
 
-          {/* Posts Section */}
-          <div className="space-y-4 text-black">
-            {posts.map((post) => (
-              <div
-                key={post.id}
-                className="p-4 bg-white rounded shadow hover:shadow-md cursor-pointer"
-              >
-                <div className="flex items-center mb-2">
-                  <Image
-                    src={post.userProfilePicture}
-                    alt="User Profile"
-                    width={40}
-                    height={40}
-                    className="w-8 h-8 rounded-full mr-2"
-                  />
-                  <div>
-                    <h2 className="text-sm font-semibold">{post.userName}</h2>
-                    <h2 className="text-xs text-gray-500">
-                      {post.timestamp?.toDate().toLocaleString()}
-                    </h2>
-                  </div>
-                </div>
-                <h3 className="text-lg font-bold">{post.content}</h3>
-                {post.image && (
-                  <Image
-                    src={post.image}
-                    alt="Post Image"
-                    width={100}
-                    height={100}
-                    className="rounded mt-2"
-                  />
-                )}
-                <div className="flex items-center space-x-4 mt-2">
+            {/* Sorting Options */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex space-x-4">
+                {["recent", "popular"].map((option) => (
                   <button
-                    onClick={() => handleLike(post.id)}
-                    className="text-blue-500 hover:underline"
+                    key={option}
+                    onClick={() => setFeedSort(option)}
+                    className={`px-4 py-2 rounded ${
+                      feedSort === option
+                        ? "bg-black text-white"
+                        : "bg-gray-200 text-black"
+                    }`}
                   >
-                    Like ({post.likes})
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
                   </button>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Create Post
+              </button>
+            </div>
+
+            {/* Feed Component */}
+            <Feed
+              posts={posts.map((post) => ({
+                ...post,
+                userProfilePicture: post.userProfilePicture || "/images/default-profile.png",
+              }))}
+              handleLike={(postId) => handleLike(postId)}
+            />
+          </section>
+        )}
       </div>
 
       {/* Create Post Modal */}
