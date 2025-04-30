@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import Button from "@/components/Button";
 import Image from "next/image";
 
 export default function JoinCommunity() {
   const router = useRouter();
   const [communities, setCommunities] = useState([]);
+  const [allCommunities, setAllCommunities] = useState([]); // Store all communities
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -24,6 +25,7 @@ export default function JoinCommunity() {
           ...doc.data(),
         }));
         setCommunities(communitiesList);
+        setAllCommunities(communitiesList); // Save the full list of communities
       } catch (error) {
         console.error("Error fetching communities:", error);
       } finally {
@@ -53,10 +55,10 @@ export default function JoinCommunity() {
 
     if (query === "") {
       // Reset to show all communities if the search query is empty
-      setCommunities((prevCommunities) => [...prevCommunities]);
+      setCommunities(allCommunities); // Reset to the full list of communities
     } else {
-      setCommunities((prevCommunities) =>
-        prevCommunities.filter((community) =>
+      setCommunities(
+        allCommunities.filter((community) =>
           community.name.toLowerCase().startsWith(query)
         )
       );
