@@ -2,7 +2,6 @@
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { addRecipe } from "@/lib/recipeService";
 import { uploadRecipeImage } from "@/lib/uploadService";
 import Image from "next/image";
 import { auth, db } from "@/lib/firebase";

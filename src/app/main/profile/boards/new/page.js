@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { createBoard } from "@/lib/boardService";
-import { getUserId } from "@/lib/userService";
 import Button from "@/components/Button";
 
 export default function CreateBoard() {

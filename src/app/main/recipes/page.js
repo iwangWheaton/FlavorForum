@@ -6,7 +6,6 @@ import { getRecipes } from "@/lib/recipeService";
 
 export default function RecipesPage() {
   const [recipes, setRecipes] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchRecipes = async () => {

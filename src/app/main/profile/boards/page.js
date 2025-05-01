@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getUserBoards } from "@/lib/boardService";
-import { getUserId } from "@/lib/userService";
 import Link from "next/link";
 
 export default function BoardsPage() {
