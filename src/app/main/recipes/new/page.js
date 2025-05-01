@@ -1,11 +1,11 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { uploadRecipeImage } from "@/lib/uploadService";
+import { extractRecipeFromURL } from "@/lib/recipeExtractor";
 import Image from "next/image";
 import { auth, db } from "@/lib/firebase";
-import { useEffect } from "react";
 import { doc, setDoc, collection, addDoc } from "firebase/firestore"; 
 import { v4 as uuidv4 } from "uuid";
 
@@ -15,7 +15,10 @@ export default function CreateRecipe() {
   const [isSubmitted, setSubmitted] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewImage, setPreviewImage] = useState(null);
-  const fileInputRef = useRef(null); 
+  const fileInputRef = useRef(null);
+  const [urlInput, setUrlInput] = useState("");
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractError, setExtractError] = useState("");
   
   const [ingredients, setIngredients] = useState([{
     quantity: "",
@@ -114,6 +117,58 @@ export default function CreateRecipe() {
     }));
   };
 
+  const handleExtractRecipe = async (e) => {
+    e.preventDefault();
+    
+    if (!urlInput.trim()) {
+      setExtractError("Please enter a valid URL");
+      return;
+    }
+    
+    setIsExtracting(true);
+    setExtractError("");
+    
+    try {
+      // Use environment variable for API key
+      const apiKey = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY;
+      if (!apiKey) {
+        throw new Error("API key is missing. Please check your environment variables.");
+      }
+      
+      const extractedRecipe = await extractRecipeFromURL(urlInput, apiKey);
+      
+      // Update the recipe data with the extracted information
+      setRecipe(prev => ({
+        ...prev,
+        title: extractedRecipe.title,
+        notes: extractedRecipe.notes,
+        cookingTime: extractedRecipe.cookingTime,
+        mealType: extractedRecipe.mealType || prev.mealType,
+        instructions: extractedRecipe.instructions,
+        dietaryOptions: extractedRecipe.dietaryOptions,
+        imageUrl: extractedRecipe.imageUrl || prev.imageUrl,
+      }));
+      
+      // Update ingredients
+      if (extractedRecipe.structuredIngredients && extractedRecipe.structuredIngredients.length > 0) {
+        setIngredients(extractedRecipe.structuredIngredients);
+      }
+      
+      // Set preview image if available
+      if (extractedRecipe.imageUrl) {
+        setPreviewImage(extractedRecipe.imageUrl);
+      }
+      
+      // Clear the URL input
+      setUrlInput("");
+    } catch (error) {
+      console.error("Error extracting recipe:", error);
+      setExtractError(error.message || "Failed to extract recipe. Please try another URL.");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -123,10 +178,10 @@ export default function CreateRecipe() {
     }
 
     const formattedIngredients = formatIngredients();
-  if (formattedIngredients.length === 0) {
-    alert("Please add at least one ingredient");
-    return;
-  }
+    if (formattedIngredients.length === 0) {
+      alert("Please add at least one ingredient");
+      return;
+    }
     
     try {
       let userId = 'anonymous';
@@ -180,6 +235,39 @@ export default function CreateRecipe() {
         <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-6">
           <h2 className="text-2xl font-bold mb-6 text-gray">Create Your Recipe</h2>
           
+          {/* Recipe URL Extractor */}
+          <div className="mb-8 p-4 border border-gray/20 rounded-lg bg-blue bg-opacity-5">
+            <h3 className="text-lg font-bold mb-2 text-gray">Import Recipe from URL</h3>
+            <p className="text-sm text-gray mb-4">
+              Enter a recipe URL to automatically import details.
+            </p>
+            
+            <div className="flex flex-col md:flex-row gap-2">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder="https://example.com/recipe"
+                className="flex-grow p-2 border border-gray/20 rounded-lg text-gray"
+              />
+              <button
+                onClick={handleExtractRecipe}
+                disabled={isExtracting || !urlInput.trim()}
+                className={`px-4 py-2 rounded-lg text-white ${
+                  isExtracting || !urlInput.trim() 
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue hover:opacity-90"
+                }`}
+              >
+                {isExtracting ? "Extracting..." : "Import Recipe"}
+              </button>
+            </div>
+            
+            {extractError && (
+              <p className="mt-2 text-red text-sm">{extractError}</p>
+            )}
+          </div>
+          
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* image upload */}
             <div>
@@ -188,28 +276,28 @@ export default function CreateRecipe() {
                 {previewImage ? (
                   <div className="relative w-full h-64 mb-4">
                     <Image
-                      src = {previewImage}
-                      alt = "recipe preview"
+                      src={previewImage}
+                      alt="recipe preview"
                       fill
-                      className = "rounded-lg object-cover"
-                      />
-                </div>
-                ) : (
-                  <div className = "w-full h-64 bg-gray/10 rounded-lg flex items-center justify-center mb-4">
-                    <p className = "text-gray/50">No image selected</p>    
+                      className="rounded-lg object-cover"
+                    />
                   </div>
-                  )}
+                ) : (
+                  <div className="w-full h-64 bg-gray/10 rounded-lg flex items-center justify-center mb-4">
+                    <p className="text-gray/50">No image selected</p>    
+                  </div>
+                )}
                 
-                <div className = "flex gap-4">
+                <div className="flex gap-4">
                   <button
-                    type = "button"
-                    onClick = {() => fileInputRef.current.click()}
-                    className = "px-4 py-2 bg-blue text-white rounded-lg hover:opacity-90"
-                    >
-                      {previewImage ? "Change Image" : "Select Image"}
-                    </button>
+                    type="button"
+                    onClick={() => fileInputRef.current.click()}
+                    className="px-4 py-2 bg-blue text-white rounded-lg hover:opacity-90"
+                  >
+                    {previewImage ? "Change Image" : "Select Image"}
+                  </button>
 
-                    {previewImage && (
+                  {previewImage && (
                     <button
                       type="button"
                       onClick={() => {
@@ -220,7 +308,7 @@ export default function CreateRecipe() {
                     >
                       Remove Image
                     </button>
-                    )}
+                  )}
                 </div>
 
                 <input
@@ -244,7 +332,7 @@ export default function CreateRecipe() {
                     </p>
                   </div>
                 )}
-                </div>
+              </div>
             </div>
 
             {/* title */}
@@ -331,18 +419,17 @@ export default function CreateRecipe() {
             
             {/* Add Ingredients Section */}
             <div>
-            <label className = "block text-gray font-semibold">Ingredients</label>
+              <label className="block text-gray font-semibold">Ingredients</label>
               <div className="flex justify-between items-center mb-3">
-                
                 <button
                   type="button"
                   onClick={addIngredient}
                   className="px-4 py-2 bg-blue text-white rounded-lg hover:opacity-90"
-                  >
-                    <span className="mr-1">+</span> Add Ingredient
-                  </button>
-              <div>
-                
+                >
+                  <span className="mr-1">+</span> Add Ingredient
+                </button>
+              </div>
+              
               <div className="space-y-3 max-h-72 overflow-y-auto p-2 border border-gray/20 rounded-lg"> 
                 {ingredients.map((ingredient, index) => (
                   <div key={index} className="flex gap-2 items-center">
@@ -358,11 +445,11 @@ export default function CreateRecipe() {
                       value={ingredient.unit}
                       onChange={(e) => handleIngredientChange(index, "unit", e.target.value)}
                       className="w-24 p-2 border border-gray/20 rounded-lg text-gray"
-                      >
-                        <option value="">Unit</option>
-                        {unitOptions.map((unit) => (
-                          <option key={unit} value = {unit}>{unit}</option>
-                        ))}
+                    >
+                      <option value="">Unit</option>
+                      {unitOptions.map((unit) => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
                     </select>
 
                     <input
@@ -379,14 +466,12 @@ export default function CreateRecipe() {
                       onClick={() => removeIngredient(index)}
                       className="p-2 text-red hover:bg-red/10 rounded-full"
                       disabled={ingredients.length === 1} // Disable if only one ingredient left
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    >
+                      ✕
+                    </button>
+                  </div>
                 ))}
               </div>
-            </div>
-            </div>
             </div>
             
             <div>

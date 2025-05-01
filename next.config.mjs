@@ -3,8 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
-      { hostname: 'firebasestorage.googleapis.com' },
-      { hostname: 'lh3.googleusercontent.com' },
+      { hostname: '*' }
     ],
   },
   webpack: (config, { isServer }) => {
