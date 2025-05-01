@@ -10,7 +10,7 @@ import { doc, getDoc, deleteDoc } from "firebase/firestore";
 import Button from "@/components/Button";
 import SaveToBoardModal from "@/components/SaveToBoardModal";
 import { useSession } from "next-auth/react";
-import { FaBookmark, FaRegBookmark, FaEllipsisV } from "react-icons/fa";
+import { FaRegBookmark, FaEllipsisV } from "react-icons/fa";
 
 export default function RecipeDetailPage({ params }) {
   const router = useRouter();
@@ -85,10 +85,37 @@ export default function RecipeDetailPage({ params }) {
   };
 
   useEffect(() => {
+    const loadDisqus = () => {
+      if (typeof window !== "undefined") {
+        if (window.DISQUS) {
+          window.DISQUS.reset({
+            reload: true,
+            config: function () {
+              this.page.url = `${window.location.origin}/main/recipes/${unwrappedParams.recipeId}`;
+              this.page.identifier = unwrappedParams.recipeId;
+              this.page.title = recipe?.title || "Recipe";
+            },
+          });
+        } else {
+          window.disqus_config = function () {
+            this.page.url = `${window.location.origin}/main/recipes/${unwrappedParams.recipeId}`;
+            this.page.identifier = unwrappedParams.recipeId;
+            this.page.title = recipe?.title || "Recipe";
+          };
+
+          const d = document;
+          const s = d.createElement("script");
+          s.src = "https://flavorforum.disqus.com/embed.js"; // Replace with your Disqus shortname
+          s.setAttribute("data-timestamp", +new Date());
+          (d.head || d.body).appendChild(s);
+        }
+      }
+    };
+
     if (recipe) {
       loadDisqus();
     }
-  }, [recipe]);
+  }, [recipe, unwrappedParams.recipeId]);
 
   if (loading) {
     return (
@@ -109,10 +136,26 @@ export default function RecipeDetailPage({ params }) {
     );
   }
 
-  // Format ingredients as list items
-  const ingredientsList = recipe.ingredients
-    ? recipe.ingredients.split('\n').filter(line => line.trim() !== '')
-    : [];
+  const getIngredientsList = () => {
+    if(recipe?.structuredIngredients && recipe.structuredIngredients.length > 0) {
+      return recipe.structuredIngredients;
+    } else if (recipe?.ingredients) {
+      //fallback to the old format of a long list
+      return recipe.ingredients
+        .split('\n')
+        .filter(line => line.trim() !== '')
+        .map(line => ({ 
+          fullText: line.replace(/^-\s*/, ''),
+          // Simple format doesn't have separate quantity, unit, and name
+          quantity: '',
+          unit: '',
+          name: line.replace(/^-\s*/, '')
+        }));
+    }
+    return [];
+  };
+
+  const ingredientsList = getIngredientsList();
 
   // Format instructions as numbered steps
   const instructionsList = recipe.instructions
@@ -239,13 +282,35 @@ export default function RecipeDetailPage({ params }) {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-bold text-gray mb-4">Ingredients</h2>
             {ingredientsList.length > 0 ? (
-              <ul className="space-y-2">
-                {ingredientsList.map((ingredient, index) => (
-                  <li key={index} className="flex items-start text-gray">
-                    <span className="mr-2">•</span>
-                    <span>{ingredient.replace(/^-\s*/, '')}</span>
-                  </li>
-                ))}
+              <ul className="space-y-3">
+                {ingredientsList.map((ingredient, index) => {
+                  if(ingredient.quantity || ingredient.unit || ingredient.name) {
+                    const quantityText = ingredient.quantity || '';
+                    const unitText = ingredient.unit ? `${ingredient.unit}` : '';
+                    const nameText = ingredient.name || '';
+                    const fullText = ingredient.fullText || `${quantityText} ${unitText} ${nameText}`;
+
+                    return (
+                      <li key={index} className="flex items-start text-gray">
+                        <span className="mr-2 mt-1">•</span>
+                        <span>
+                          {ingredient.fullText ? (
+                            // for old format
+                            fullText.trim()
+                          ) : (
+                            // for structured format
+                            <>
+                              {quantityText && <span className="font-medium">{quantityText} </span>}
+                              {unitText && <span>{unitText} </span>}
+                              <span>{nameText} </span>
+                            </>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  }
+                  return null;
+                })}
               </ul>
             ) : (
               <p className="text-gray">No ingredients listed</p>

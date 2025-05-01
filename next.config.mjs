@@ -1,9 +1,41 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    reactStrictMode: true,
-    images: {
-      domains: ['firebasestorage.googleapis.com', "lh3.googleusercontent.com"], // Add the Firebase domain here
-    },
-  };
-  
-  export default nextConfig;
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      { hostname: 'firebasestorage.googleapis.com' },
+      { hostname: 'lh3.googleusercontent.com' },
+    ],
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false,
+        crypto: false,
+        stream: false,
+        http: false,
+        https: false,
+        zlib: false,
+        util: false,
+        url: false,
+        net: false,
+        tls: false,
+        assert: false,
+        dns: false,
+        child_process: false,
+        events: require.resolve('events/'),
+        express: false,
+        etag: false,
+        mime: false,
+        send: false,
+        destroy: false,
+      };
+    }
+    return config;
+  },
+};
+
+export default nextConfig;
