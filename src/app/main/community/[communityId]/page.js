@@ -236,7 +236,7 @@ export default function CommunityPage({ params: paramsPromise }) {
         </div>
 
         {/* Tentative Community Message */}
-        {community.isTentative ? (
+        {community.isTentative && (
           <div className="mt-6 bg-yellow-100 p-4 rounded-lg shadow-md">
             <h2 className="text-xl font-bold text-yellow-800">This community is tentative!</h2>
             <p className="text-black mt-2">
@@ -244,37 +244,39 @@ export default function CommunityPage({ params: paramsPromise }) {
               <strong> 2 people</strong> to endorse it in order to be published and have its own feed!
             </p>
           </div>
-        ) : (
-          /* Posts Section */
-          <section className="mt-6">
-            <h2 className="text-2xl font-bold mb-4">Community Feed</h2>
+        )}
 
-            {/* Sorting Options */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex space-x-4">
-                {["recent", "popular"].map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => setFeedSort(option)}
-                    className={`px-4 py-2 rounded ${
-                      feedSort === option
-                        ? "bg-black text-white"
-                        : "bg-gray-200 text-black"
-                    }`}
-                  >
-                    {option.charAt(0).toUpperCase() + option.slice(1)}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Create Post
-              </button>
+        {/* Posts Section */}
+        <section className="mt-6">
+          <h2 className="text-2xl font-bold mb-4">Community Feed</h2>
+
+          {/* Sorting Options */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex space-x-4">
+              {["recent", "popular"].map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setFeedSort(option)}
+                  className={`px-4 py-2 rounded ${
+                    feedSort === option
+                      ? "bg-black text-white"
+                      : "bg-gray-200 text-black"
+                  }`}
+                >
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </button>
+              ))}
             </div>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Create Post
+            </button>
+          </div>
 
-            {/* Feed Component */}
+          {/* Feed Component */}
+          {posts.length > 0 ? (
             <Feed
               posts={posts.map((post) => ({
                 ...post,
@@ -282,8 +284,10 @@ export default function CommunityPage({ params: paramsPromise }) {
               }))}
               handleLike={(postId) => handleLike(postId)}
             />
-          </section>
-        )}
+          ) : (
+            <p className="text-gray-500">No posts available. Be the first to post in this community!</p>
+          )}
+        </section>
       </div>
 
       {/* Create Post Modal */}
