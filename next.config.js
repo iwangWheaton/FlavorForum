@@ -25,7 +25,6 @@ const nextConfig = {
         assert: false,
         dns: false,
         child_process: false,
-        events: require.resolve('events/'),
         express: false,
         etag: false,
         mime: false,
