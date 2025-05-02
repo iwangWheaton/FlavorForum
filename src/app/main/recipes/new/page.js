@@ -1,13 +1,13 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { addRecipe } from "@/lib/recipeService";
 import { uploadRecipeImage } from "@/lib/uploadService";
-import { getUserId } from "@/lib/userService";
+import { extractRecipeFromURL } from "@/lib/recipeExtractor";
 import Image from "next/image";
-import { auth } from "@/lib/firebase";
-import { useEffect } from "react";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc, collection, addDoc } from "firebase/firestore"; 
+import { v4 as uuidv4 } from "uuid";
 
 export default function CreateRecipe() {
   const { data: session } = useSession();
@@ -15,7 +15,23 @@ export default function CreateRecipe() {
   const [isSubmitted, setSubmitted] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewImage, setPreviewImage] = useState(null);
-  const fileInputRef = useRef(null); 
+  const fileInputRef = useRef(null);
+  const [urlInput, setUrlInput] = useState("");
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractError, setExtractError] = useState("");
+  
+  const [ingredients, setIngredients] = useState([{
+    quantity: "",
+    unit: "",
+    name: ""
+  }]);
+
+  const unitOptions = [
+    "tsp", "tbsp", "cup", "oz", "lb", "g",
+    "kg", "ml", "L", "pinch", "dash", "handful",
+    "piece", "clove", "slice", "bunch", "can",
+    "packet", "to taste", "whole", ""
+  ];
 
   const [recipeData, setRecipe] = useState({
     title: "",
@@ -23,7 +39,6 @@ export default function CreateRecipe() {
     cookingTime: 30,
     difficulty: "Medium",
     mealType: "Main Course", 
-    ingredients: "",
     instructions: "",
     dietaryOptions: [],
     image: null,
@@ -36,6 +51,23 @@ export default function CreateRecipe() {
 
   const handleChange = (e) => {
     setRecipe({ ...recipeData, [e.target.name]: e.target.value });
+  };
+
+  const handleIngredientChange = (index, field, value) => {
+    const updatedIngredients = [...ingredients];
+    updatedIngredients[index][field] = value;
+    setIngredients(updatedIngredients);
+  };
+
+  const addIngredient = () => {
+    setIngredients([...ingredients, { quantity: "", unit: "", name: "" }]);
+  };
+
+  const removeIngredient = (index) => {
+    if(ingredients.length == 1) return;
+    const updatedIngredients = [...ingredients];
+    updatedIngredients.splice(index, 1);
+    setIngredients(updatedIngredients);
   };
 
   const handleImageChange = (e) => {
@@ -73,39 +105,123 @@ export default function CreateRecipe() {
     setRecipe({ ...recipeData, dietaryOptions: newRestrictions });
   }
 
+  const formatIngredients = () => {
+    // First, remove any ingredients with empty names
+    const ingredientsWithNames = ingredients.filter(ing => ing.name.trim() !== '');
+    
+    // Then, create a clean copy of each ingredient with trimmed values
+    return ingredientsWithNames.map(ing => ({
+      quantity: ing.quantity,
+      unit: ing.unit,
+      name: ing.name.trim()
+    }));
+  };
+
+  const handleExtractRecipe = async (e) => {
+    e.preventDefault();
+    
+    if (!urlInput.trim()) {
+      setExtractError("Please enter a valid URL");
+      return;
+    }
+    
+    setIsExtracting(true);
+    setExtractError("");
+    
+    try {
+      // Use environment variable for API key
+      const apiKey = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY;
+      if (!apiKey) {
+        throw new Error("API key is missing. Please check your environment variables.");
+      }
+      
+      const extractedRecipe = await extractRecipeFromURL(urlInput, apiKey);
+      
+      // Update the recipe data with the extracted information
+      setRecipe(prev => ({
+        ...prev,
+        title: extractedRecipe.title,
+        notes: extractedRecipe.notes,
+        cookingTime: extractedRecipe.cookingTime,
+        mealType: extractedRecipe.mealType || prev.mealType,
+        instructions: extractedRecipe.instructions,
+        dietaryOptions: extractedRecipe.dietaryOptions,
+        imageUrl: extractedRecipe.imageUrl || prev.imageUrl,
+      }));
+      
+      // Update ingredients
+      if (extractedRecipe.structuredIngredients && extractedRecipe.structuredIngredients.length > 0) {
+        setIngredients(extractedRecipe.structuredIngredients);
+      }
+      
+      // Set preview image if available
+      if (extractedRecipe.imageUrl) {
+        setPreviewImage(extractedRecipe.imageUrl);
+      }
+      
+      // Clear the URL input
+      setUrlInput("");
+    } catch (error) {
+      console.error("Error extracting recipe:", error);
+      setExtractError(error.message || "Failed to extract recipe. Please try another URL.");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log("Session data:", session);
+    if(!recipeData || !recipeData.instructions) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    const formattedIngredients = formatIngredients();
+    if (formattedIngredients.length === 0) {
+      alert("Please add at least one ingredient");
+      return;
+    }
     
     try {
       let userId = 'anonymous';
-      if(session?.user?.email) {
-        userId = await getUserId(session.user.email);
+      if (session?.user?.email) {
+        userId = session.user.uid;
       }
 
       let imageUrl = recipeData.imageUrl;
-      
-      //  image
-      if(recipeData.image) {
+
+      // Upload image
+      if (recipeData.image) {
         setUploadProgress(0);
 
-        // generate a temporary ID for the recipe folder
-        const tempRecipeId = `${userId}-${Date.now()}`;
         imageUrl = await uploadRecipeImage(
           recipeData.image,
           userId,
-          tempRecipeId,
+          null, // No need to pass a specific ID for image folder
           (progress) => setUploadProgress(progress)
         );
       }
 
-      const recipeToSubmit = {
+      // Prepare the recipe data without the `image` field
+      const { image, ...recipeToSubmit } = {
         ...recipeData,
         imageUrl: imageUrl,
+        userId: userId, // Include userId in the recipe data
+        structuredIngredients: formattedIngredients,
       };
 
-      await addRecipe(recipeToSubmit, userId);
+      // Add recipe to the main recipes collection and get the autogenerated ID
+      const recipeDocRef = await addDoc(collection(db, "recipes"), recipeToSubmit);
+      const recipeId = recipeDocRef.id;
+
+      // Update the recipe data with the autogenerated ID
+      recipeToSubmit.id = recipeId;
+
+      // Add recipe to the user's recipes subcollection
+      const userRecipeDoc = doc(db, "users", userId, "recipes", recipeId);
+      await setDoc(userRecipeDoc, recipeToSubmit);
+
       setSubmitted(true);
     } catch (error) {
       console.error("Error:", error);
@@ -119,6 +235,39 @@ export default function CreateRecipe() {
         <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-6">
           <h2 className="text-2xl font-bold mb-6 text-gray">Create Your Recipe</h2>
           
+          {/* Recipe URL Extractor */}
+          <div className="mb-8 p-4 border border-gray/20 rounded-lg bg-blue bg-opacity-5">
+            <h3 className="text-lg font-bold mb-2 text-gray">Import Recipe from URL</h3>
+            <p className="text-sm text-gray mb-4">
+              Enter a recipe URL to automatically import details.
+            </p>
+            
+            <div className="flex flex-col md:flex-row gap-2">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder="https://example.com/recipe"
+                className="flex-grow p-2 border border-gray/20 rounded-lg text-gray"
+              />
+              <button
+                onClick={handleExtractRecipe}
+                disabled={isExtracting || !urlInput.trim()}
+                className={`px-4 py-2 rounded-lg text-white ${
+                  isExtracting || !urlInput.trim() 
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue hover:opacity-90"
+                }`}
+              >
+                {isExtracting ? "Extracting..." : "Import Recipe"}
+              </button>
+            </div>
+            
+            {extractError && (
+              <p className="mt-2 text-red text-sm">{extractError}</p>
+            )}
+          </div>
+          
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* image upload */}
             <div>
@@ -127,28 +276,28 @@ export default function CreateRecipe() {
                 {previewImage ? (
                   <div className="relative w-full h-64 mb-4">
                     <Image
-                      src = {previewImage}
-                      alt = "recipe preview"
+                      src={previewImage}
+                      alt="recipe preview"
                       fill
-                      className = "rounded-lg object-cover"
-                      />
-                </div>
-                ) : (
-                  <div className = "w-full h-64 bg-gray/10 rounded-lg flex items-center justify-center mb-4">
-                    <p className = "text-gray/50">No image selected</p>    
+                      className="rounded-lg object-cover"
+                    />
                   </div>
-                  )}
+                ) : (
+                  <div className="w-full h-64 bg-gray/10 rounded-lg flex items-center justify-center mb-4">
+                    <p className="text-gray/50">No image selected</p>    
+                  </div>
+                )}
                 
-                <div className = "flex gap-4">
+                <div className="flex gap-4">
                   <button
-                    type = "button"
-                    onClick = {() => fileInputRef.current.click()}
-                    className = "px-4 py-2 bg-blue text-white rounded-lg hover:opacity-90"
-                    >
-                      {previewImage ? "Change Image" : "Select Image"}
-                    </button>
+                    type="button"
+                    onClick={() => fileInputRef.current.click()}
+                    className="px-4 py-2 bg-blue text-white rounded-lg hover:opacity-90"
+                  >
+                    {previewImage ? "Change Image" : "Select Image"}
+                  </button>
 
-                    {previewImage && (
+                  {previewImage && (
                     <button
                       type="button"
                       onClick={() => {
@@ -159,7 +308,7 @@ export default function CreateRecipe() {
                     >
                       Remove Image
                     </button>
-                    )}
+                  )}
                 </div>
 
                 <input
@@ -183,7 +332,7 @@ export default function CreateRecipe() {
                     </p>
                   </div>
                 )}
-                </div>
+              </div>
             </div>
 
             {/* title */}
@@ -268,19 +417,61 @@ export default function CreateRecipe() {
               </div>
             </div>
             
-            {/* Ingredients, instructions, notes */}
+            {/* Add Ingredients Section */}
             <div>
-              <label htmlFor="ingredients" className="block text-gray mb-1">Ingredients</label>
-              <textarea
-                id="ingredients"
-                name="ingredients"
-                value={recipeData.ingredients}
-                onChange={handleChange}
-                placeholder="- 2 tablespoons buttery butterific butter"
-                required
-                rows="5"
-                className="w-full p-2 border border-gray/20 rounded-lg text-gray"
-              ></textarea>
+              <label className="block text-gray font-semibold">Ingredients</label>
+              <div className="flex justify-between items-center mb-3">
+                <button
+                  type="button"
+                  onClick={addIngredient}
+                  className="px-4 py-2 bg-blue text-white rounded-lg hover:opacity-90"
+                >
+                  <span className="mr-1">+</span> Add Ingredient
+                </button>
+              </div>
+              
+              <div className="space-y-3 max-h-72 overflow-y-auto p-2 border border-gray/20 rounded-lg"> 
+                {ingredients.map((ingredient, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={ingredient.quantity}
+                      onChange={(e) => handleIngredientChange(index, "quantity", e.target.value)}
+                      placeholder="Qty"
+                      className="w-16 p-2 border border-gray/20 rounded-lg text-gray"
+                    />
+
+                    <select
+                      value={ingredient.unit}
+                      onChange={(e) => handleIngredientChange(index, "unit", e.target.value)}
+                      className="w-24 p-2 border border-gray/20 rounded-lg text-gray"
+                    >
+                      <option value="">Unit</option>
+                      {unitOptions.map((unit) => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={ingredient.name}
+                      onChange={(e) => handleIngredientChange(index, "name", e.target.value)}
+                      placeholder="Ingredient Name"
+                      className="flex-grow p-2 border border-gray/20 rounded-lg text-gray"
+                      required={index === 0} // Make the first ingredient required
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => removeIngredient(index)}
+                      className="p-2 text-red hover:bg-red/10 rounded-full"
+                      disabled={ingredients.length === 1} // Disable if only one ingredient left
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
             
             <div>
@@ -304,7 +495,7 @@ export default function CreateRecipe() {
                 name="notes"
                 value={recipeData.notes}
                 onChange={handleChange}
-                placeholder="This will be the content of your post"
+                placeholder=""
                 rows="3"
                 className="w-full p-2 border border-gray/20 rounded-lg text-gray"
               ></textarea>

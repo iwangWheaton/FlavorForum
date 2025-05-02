@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getUserBoards } from "@/lib/boardService";
-import { getUserId } from "@/lib/userService";
 import Link from "next/link";
 
 export default function BoardsPage() {
@@ -16,13 +15,11 @@ export default function BoardsPage() {
 
   useEffect(() => {
     const fetchBoards = async () => {
-      if (session?.user?.email) {
+      if (session?.user?.uid) {
         try {
-          const userId = await getUserId(session.user.email);
-          const userBoards = await getUserBoards(userId);
+          const userBoards = await getUserBoards(session.user.uid);
           setBoards(userBoards);
         } catch (error) {
-          console.error("Error fetching boards:", error);
         } finally {
           setLoading(false);
         }
@@ -37,7 +34,7 @@ export default function BoardsPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">My Recipe Boards</h1>
+        <h1 className="text-2xl font-bold">Recipe Boards</h1>
         <Link href="/main/profile/boards/new">
           <button className="px-4 py-2 bg-red text-white rounded-lg">
             Create New Board

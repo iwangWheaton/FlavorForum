@@ -6,11 +6,6 @@ import { Button } from "@mui/material";
 import { db } from "../../../lib/firebase";
 import { collection, addDoc, getDocs } from "firebase/firestore";
 
-// const sampleCommunities = [
-//   { id: "1", name: "Healthy Eats", location: "Chicago, IL" },
-//   { id: "2", name: "Spicy Lovers", location: "New York, NY" },
-//   { id: "3", name: "Baking Masters", location: "Los Angeles, CA" },
-// ];
 
 export default function JoinCommunity() {
   const router = useRouter();

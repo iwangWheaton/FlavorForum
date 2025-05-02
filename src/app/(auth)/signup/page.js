@@ -8,6 +8,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import styles from './Login.module.css';
 import Button from "@/components/Button";
+import { FaGoogle } from "react-icons/fa"; // Import icons
 
 export default function Signup() {
   const router = useRouter();
@@ -127,13 +128,21 @@ export default function Signup() {
               name="password"
               value={formData.password}
               onChange={handleChange}
+              placeholder="super secret password"
               required
             />
+            <p className={styles.loginLink}>
+              Already have an account? <a href="/login" className="text-blue-500 hover:underline">Log in</a>
+            </p>
           </div>
 
-          <button type="submit" className={styles.button}>Let&apos;s Get Cooking!</button>
+          <button type="submit" onChange={handleSubmit} className={styles.button}>Let&apos;s Get Cooking!</button>
         </form>
-        <Button onClick={() => signIn("google", { callbackUrl: redirect || '/' })} className="bg-blue-500 text-white p-10 rounded">
+        <Button 
+          onClick={() => signIn("google", { callbackUrl: redirect || '/' })} 
+          className="bg-blue-500 text-white p-2 rounded flex items-center justify-center gap-2 w-full" // Added w-full for full width
+        >
+          <FaGoogle />
           Sign up with Google
         </Button>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { signInWithEmailAndPassword, auth, googleProvider, signInWithPopup } from "@/lib/firebase";
+import { auth, googleProvider, signInWithPopup } from "@/lib/firebase";
 import { motion } from "framer-motion";
 
 export default function SignInModal({ isOpen, onClose }) {

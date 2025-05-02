@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import Button from "@/components/Button";
 
-
 // this is the homepage 
 export default function Home() {
   const router = useRouter();

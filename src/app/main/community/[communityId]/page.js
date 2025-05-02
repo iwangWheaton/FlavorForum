@@ -1,211 +1,207 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Button from "@/components/Button";
 import Image from "next/image";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, updateDoc, increment, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, increment, deleteDoc, collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Feed from "@/components/Feed";
 
 export default function CommunityPage({ params: paramsPromise }) {
   const { data: session } = useSession();
-  const router = useRouter();
-  const [params, setParams] = useState(null); // State to store unwrapped params
+  const [params, setParams] = useState(null);
   const [joined, setJoined] = useState(false);
   const [community, setCommunity] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showPopup, setShowPopup] = useState(false); // State for popup visibility
-  const [feedSort, setFeedSort] = useState("recent"); // State for feed sorting
-  const [posts, setPosts] = useState([]); 
+  const [feedSort, setFeedSort] = useState("recent");
+  const [posts, setPosts] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newPostContent, setNewPostContent] = useState("");
+  const [newPostImage, setNewPostImage] = useState(null);
 
-  const samplePosts = [
-    { id: 1, title: "10 Best Vegan Recipes", author: "ChefJohn", timestamp: "2 hours ago" },
-    { id: 2, title: "How to Grill the Perfect Steak", author: "GrillMaster", timestamp: "5 hours ago" },
-    { id: 3, title: "Quick 15-Minute Meals", author: "FastCook", timestamp: "1 day ago" },
-  ];
-  
+  const handleJoin = async () => {
+    if (!session || !session.user) {
+      alert("You must be logged in to join a community.");
+      return;
+    }
+
+    try {
+      const userCommunityRef = doc(db, "users", session.user.uid, "communities", params.communityId);
+      const communityRef = doc(db, "communities", params.communityId);
+
+      // Add the user to the community's members
+      await setDoc(userCommunityRef, {
+        joinedAt: serverTimestamp(),
+      });
+
+      // Increment the community's member count
+      const communitySnap = await getDoc(communityRef);
+      const currentNumMembers = communitySnap.exists() ? communitySnap.data().numMembers || 0 : 0;
+
+      await updateDoc(communityRef, {
+        numMembers: increment(1),
+      });
+
+      // If the community reaches 2 members, update isTentative to false
+      if (currentNumMembers + 1 >= 2 && communitySnap.data().isTentative) {
+        await updateDoc(communityRef, {
+          isTentative: false,
+        });
+        alert("The community is now published and has its own feed!");
+      }
+
+      setJoined(true);
+      alert("You have successfully joined the community!");
+    } catch (error) {
+      console.error("Error joining community:", error);
+      alert("Failed to join the community. Please try again.");
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!session || !session.user) {
+      alert("You must be logged in to leave a community.");
+      return;
+    }
+
+    try {
+      const userCommunityRef = doc(db, "users", session.user.uid, "communities", params.communityId);
+      const communityRef = doc(db, "communities", params.communityId);
+
+      // Remove the user from the community's members
+      await deleteDoc(userCommunityRef);
+
+      // Decrement the community's member count
+      await updateDoc(communityRef, {
+        numMembers: increment(-1),
+      });
+
+      setJoined(false);
+      alert("You have successfully left the community.");
+    } catch (error) {
+      console.error("Error leaving community:", error);
+      alert("Failed to leave the community. Please try again.");
+    }
+  };
+
   // Unwrap params
   useEffect(() => {
-    
     const unwrapParams = async () => {
       const resolvedParams = await paramsPromise;
-      console.log("Resolved Params:", resolvedParams);
       setParams(resolvedParams);
     };
     unwrapParams();
-    
   }, [paramsPromise]);
 
-  // Fetch community data from Firestore
+  // Fetch community data
   useEffect(() => {
-    setPosts(samplePosts);
-    if (!session || !session.user) {
-      console.error("User is not authenticated.");
-      return;
-    }
+    if (!session || !session.user) return;
     if (params?.communityId) {
       const fetchCommunity = async () => {
-        setLoading(true);
+        if (!params?.communityId) return;
+
         try {
           const docRef = doc(db, "communities", params.communityId);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             setCommunity({ id: docSnap.id, ...docSnap.data() });
-          } else {
-            console.error("No such community exists.");
+
+            // Check if the user has joined the community
+            const userCommunityRef = doc(db, "users", session.user.uid, "communities", params.communityId);
+            const userCommunitySnap = await getDoc(userCommunityRef);
+            setJoined(userCommunitySnap.exists());
           }
         } catch (error) {
           console.error("Error fetching community:", error);
-        } finally {
-          setLoading(false);
         }
       };
 
       fetchCommunity();
     }
-  }, [session, params, feedSort]);
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  }, [session, params]);
 
+  // Fetch posts for the community
+  const fetchPosts = async () => {
+    if (!params?.communityId) return;
 
     try {
-      if (!session) {
-        console.error("User is not authenticated.");
-        return;
+      let postsRef = collection(db, "communities", params.communityId, "posts");
+
+      // Apply sorting based on the selected option
+      if (feedSort === "recent") {
+        postsRef = query(postsRef, orderBy("timestamp", "desc"));
       }
-      const storage = storage();
-      const storageRef = ref(storage, `images/${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await downloadURL(storageRef);
 
-
-      const communityRef = doc(db, "communities", communityId);
-      await setDoc(
-        communityRef,
-        { image: downloadURL },
-        { merge: true }
-      );
-
-
-      setCommunity((prev) => ({ ...prev, image: downloadURL }));
+      const querySnapshot = await getDocs(postsRef);
+      const communityPosts = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setPosts(communityPosts); // Only posts for the specific community
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error("Error fetching posts:", error);
     }
   };
 
+  useEffect(() => {
+    fetchPosts();
+  }, [params, feedSort]);
 
-  const handleJoin = async () => {
-    console.log("Community ID:", params);
-    if (!session || !session.user) {
-      router.push(`/signup?redirect=/main/community/${params?.communityId || ""}`);
+  // Handle creating a new post
+  const handleCreatePost = async () => {
+    if (!newPostContent) {
+      alert("Please fill in the post content.");
       return;
     }
-  
-    if (!params?.communityId || !community?.name) {
-      console.error("Community ID or name is undefined.");
-      return;
-    }
-  
-    const userId = session.user.uid; // Use `uid` instead of `id`
-  
+
     try {
-      // Add community to user's subcollection
-      console.log("User ID:", userId);
-      console.log("Community ID:", params.communityId);
-      const userRef = doc(db, "users", userId, "communities", params.communityId);
-      console.log("User Reference:", userRef);
+      let imageUrl = null;
 
-      await setDoc(userRef, {
-        name: community.name,
-        joinedAt: new Date(),
-      });
-      console.log("Community added to user's subcollection successfully!");
+      // Upload the image to Firebase Storage if an image is selected
+      if (newPostImage) {
+        const storage = getStorage();
+        const storageRef = ref(storage, `images/${newPostImage.name}`);
+        const snapshot = await uploadBytes(storageRef, newPostImage);
+        imageUrl = await getDownloadURL(snapshot.ref);
+      }
 
-      // Add user to the community's members subcollection
-      const memberRef = doc(db, "communities", params.communityId, "members", userId);
-      console.log("Member Reference Path:", memberRef.path);
+      // Create the post data
+      const postData = {
+        content: newPostContent,
+        image: imageUrl,
+        userName: session?.user?.name || "Anonymous",
+        userProfilePicture: session?.user?.image || "/images/default-profile.png",
+        timestamp: serverTimestamp(),
+        likes: 0,
+        comments: [],
+      };
 
-      console.log("Adding user to community's members subcollection...");
-      await setDoc(memberRef, {
-        joinedAt: new Date(),
-      });
+      // Add post to the community's posts subcollection
+      const postRef = await addDoc(collection(db, "communities", params.communityId, "posts"), postData);
 
-      // Add userId to the members array in the main community document
-      const communityRef = doc(db, "communities", params.communityId);
-      console.log("Adding userId to members array in the main community document...");
-      await updateDoc(communityRef, {
-        members: increment(1),
-      });
+      // Add post to the main posts collection
+      const mainPostRef = doc(db, "posts", postRef.id);
+      await setDoc(mainPostRef, { ...postData, id: postRef.id });
 
-      console.log("UserId added to members array successfully!");
+      // Add post to the user's posts subcollection
+      const userPostRef = doc(db, "users", session.user.uid, "posts", postRef.id);
+      await setDoc(userPostRef, { ...postData, id: postRef.id });
 
-      // Increment the community's member count
-      console.log("Incrementing community member count...");
-      await updateDoc(communityRef, {
-        numMembers: increment(1),
-      });
-      console.log("Community member count incremented successfully!");
+      console.log("Post created with ID:", postRef.id);
 
-      setJoined(true);
-      setShowPopup(true);
+      // Refresh the page
+      window.location.reload();
     } catch (error) {
-      console.error("Error joining community:", error);
-      console.error("Error code:", error.code);
-      console.error("Error message:", error.message);
+      console.error("Error creating post:", error);
     }
   };
 
-  const handleLeave = async () => {
-    console.log("Leaving community...");
-    if (!session || !session.user) {
-      console.error("User is not authenticated.");
-      return;
-    }
-  
-    if (!params?.communityId) {
-      console.error("Community ID is undefined.");
-      return;
-    }
-  
-    const userId = session.user.uid;
-  
-    try {
-      // Remove community from user's subcollection
-      const userRef = doc(db, "users", userId, "communities", params.communityId);
-      console.log("Removing community from user's subcollection...");
-      await deleteDoc(userRef);
-      console.log("Community removed from user's subcollection successfully!");
-  
-      // Remove user from the community's members subcollection
-      const memberRef = doc(db, "communities", params.communityId, "members", userId);
-      console.log("Removing user from community's members subcollection...");
-      await deleteDoc(memberRef);
-      console.log("User removed from community's members subcollection successfully!");
-  
-      // Decrement the community's member count
-      const communityRef = doc(db, "communities", params.communityId);
-      console.log("Decrementing community member count...");
-      await updateDoc(communityRef, {
-        numMembers: increment(-1),
-      });
-      console.log("Community member count decremented successfully!");
-  
-      setJoined(false);
-    } catch (error) {
-      console.error("Error leaving community:", error);
-      console.error("Error code:", error.code);
-      console.error("Error message:", error.message);
-    }
-  };
+  // Handle liking a post
+ 
 
-  if (loading || !community) {
+  if ( !community) {
     return <h1 className="text-gray-500 p-6">Loading...</h1>;
-  }
-
-  if (!community) {
-    return <h1 className="text-red-500 p-6">Community not found.</h1>;
   }
 
   return (
@@ -214,7 +210,7 @@ export default function CommunityPage({ params: paramsPromise }) {
         {/* Community Banner */}
         <div className="relative w-full h-64">
           <Image
-            src={community.image || "/images/placeholder.jpg"}
+            src={community.image}
             alt={community.name || "Community Image"}
             fill
             style={{ objectFit: "cover" }}
@@ -238,13 +234,26 @@ export default function CommunityPage({ params: paramsPromise }) {
             {joined ? "Leave Community" : "Join Community"}
           </Button>
         </div>
+
+        {/* Tentative Community Message */}
+        {community.isTentative && (
+          <div className="mt-6 bg-yellow-100 p-4 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-yellow-800">This community is tentative!</h2>
+            <p className="text-black mt-2">
+              Join this community to endorse it so it can get published. This community needs at least 
+              <strong> 2 people</strong> to endorse it in order to be published and have its own feed!
+            </p>
+          </div>
+        )}
+
+        {/* Posts Section */}
         <section className="mt-6">
           <h2 className="text-2xl font-bold mb-4">Community Feed</h2>
 
           {/* Sorting Options */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex space-x-4">
-              {["hot", "recent", "popular"].map((option) => (
+              {["recent", "popular"].map((option) => (
                 <button
                   key={option}
                   onClick={() => setFeedSort(option)}
@@ -258,62 +267,58 @@ export default function CommunityPage({ params: paramsPromise }) {
                 </button>
               ))}
             </div>
-            <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-              Post
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Create Post
             </button>
           </div>
 
-          {/* Posts Section */}
-          <div className="space-y-4 text-black">
-            {posts.map((post) => (
-              <div
-                key={post.id}
-                className="p-4 bg-white rounded shadow hover:shadow-md cursor-pointer"
-              >
-                <h3 className="text-lg font-bold">{post.title}</h3>
-                <p className="text-sm text-gray-500">
-                  By {post.author} • {post.timestamp}
-                </p>
-              </div>
-            ))}
-          </div>
+          {/* Feed Component */}
+          {posts.length > 0 ? (
+            <Feed
+              posts={posts.map((post) => ({
+                ...post,
+                userProfilePicture: post.userProfilePicture || "/images/default-profile.png",
+              }))}
+              handleLike={(postId) => handleLike(postId)}
+            />
+          ) : (
+            <p className="text-gray-500">No posts available. Be the first to post in this community!</p>
+          )}
         </section>
-        {/* <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-4">Upload a New Image</h2>
-          <input type="file" onChange={handleImageUpload} />
-        </div> */}
-
       </div>
 
-      {/* Popup Modal */}
-      {showPopup && (
+      {/* Create Post Modal */}
+      {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <div className="relative w-full h-40 mb-4">
-              <Image
-                src={community.image || "/images/placeholder.jpg"}
-                alt={community.name || "Community Image"}
-                fill
-                style={{ objectFit: "cover" }}
-                className="rounded-t-lg"
-              />
-            </div>
-            <h2 className="text-2xl font-bold mb-4 text-center">{community.name}</h2>
-            <h2 className="text-center mb-6">Welcome to the {community.name} community!</h2>
-            <div className="flex justify-between">
-              <Button
-                onClick={() => setShowPopup(false)}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                Got it
-              </Button>
-              <Button
-                onClick={() => router.push("/main")}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Return to Home
-              </Button>
-            </div>
+          <div className="relative bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            {/* Close Button */}
+            <Button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            >
+              X
+            </Button>
+            <h2 className="text-xl font-bold mb-4">Create a Post</h2>
+            <textarea
+              value={newPostContent}
+              onChange={(e) => setNewPostContent(e.target.value)}
+              placeholder="What's on your mind?"
+              className="w-full p-2 border rounded mb-4 text-black"
+            ></textarea>
+            <input
+              type="file"
+              onChange={(e) => setNewPostImage(e.target.files[0])}
+              className="mb-4 text-black"
+            />
+            <button
+              onClick={handleCreatePost}
+              className="w-full bg-blue-500 p-2 rounded hover:bg-blue-600"
+            >
+              Post
+            </button>
           </div>
         </div>
       )}

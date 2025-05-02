@@ -2,13 +2,22 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, getDoc, orderBy, setDoc, updateDoc, increment } from "firebase/firestore";
 import Button from "@/components/Button";
-import Image from "next/image";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Feed from "@/components/Feed";
+import { useRouter } from "next/navigation";
 
 export default function MainPage() {
   const { data: session } = useSession();
+  const router = useRouter();
+
+  // Redirect to homepage if not signed in
+  useEffect(() => {
+    if (!session) {
+      router.push("/"); // Redirect to homepage
+    }
+  }, [session, router]);
 
   // Get the first name
   const fullName = session?.user?.name || "Chef";
@@ -27,10 +36,18 @@ export default function MainPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostImage, setNewPostImage] = useState(null);
-  const [selectedCommunity, setSelectedCommunity] = useState("");
+  const [selectedCommunity, setSelectedCommunity] = useState(() => {
+    if (typeof window !== "undefined") {
+      // Access localStorage only in the browser
+      return localStorage.getItem("selectedCommunity") || "all";
+    }
+    return "all"; // Default value for server-side rendering
+  });
+  const [selectedRecipe, setSelectedRecipe] = useState("");
 
-  // State for user's joined communities
+  // State for user's joined communities and recipes
   const [userCommunities, setUserCommunities] = useState([]);
+  const [userRecipes, setUserRecipes] = useState([]);
 
   // Fetch user's joined communities
   useEffect(() => {
@@ -40,11 +57,27 @@ export default function MainPage() {
       try {
         const communitiesRef = collection(db, "users", session.user.uid, "communities");
         const querySnapshot = await getDocs(communitiesRef);
-        const communities = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setUserCommunities(communities);
+        const communities = await Promise.all(
+          querySnapshot.docs.map(async (docSnapshot) => {
+            const communityRef = doc(db, "communities", docSnapshot.id);
+            const communitySnap = await getDoc(communityRef);
+
+            // Ensure the community data is fetched fresh from Firestore
+            if (communitySnap.exists()) {
+              return {
+                id: docSnapshot.id,
+                ...docSnapshot.data(),
+                name: communitySnap.data().name || "Unnamed Community", // Fallback for missing names
+                isTentative: communitySnap.data().isTentative || false,
+              };
+            } else {
+              return null; // Skip communities that no longer exist
+            }
+          })
+        );
+
+        // Filter out any null values (communities that no longer exist)
+        setUserCommunities(communities.filter((community) => community !== null));
       } catch (error) {
         console.error("Error fetching user's communities:", error);
       }
@@ -53,44 +86,95 @@ export default function MainPage() {
     fetchUserCommunities();
   }, [session]);
 
-  // Fetch posts from Firestore
-  useEffect(() => {
-    const fetchPosts = async () => {
-      // console.log("Fetching posts with selected option:", selectedOption);
-      if (!userCommunities.length) return;
-      try {
-        const allPosts = [];
+  const handleCommunitySelect = async (communityId) => {
+    setSelectedCommunity(communityId);
+    if (typeof window !== "undefined") {
+      // Save the selection to localStorage only in the browser
+      localStorage.setItem("selectedCommunity", communityId);
+    }
+    await fetchPosts(); // Ensure the feed refreshes after updating the community
+  };
+
+  // Fetch posts based on the selected community
+  const fetchPosts = async () => {
+    try {
+      const allPosts = [];
+      if (selectedCommunity === "all") {
+        // Fetch posts from all communities
         for (const community of userCommunities) {
-          
           const postsRef = collection(db, "communities", community.id, "posts");
-          
           const querySnapshot = await getDocs(postsRef);
           const communityPosts = querySnapshot.docs.map((doc) => ({
             id: doc.id,
+            communityId: community.id,
             ...doc.data(),
           }));
           allPosts.push(...communityPosts);
         }
-        console.log("Fetched posts:", allPosts);
-        setPosts(allPosts);
-      } catch (error) {
-        console.error("Error fetching posts:", error);
+      } else {
+        // Fetch posts from the selected community
+        const postsRef = collection(db, "communities", selectedCommunity, "posts");
+        const querySnapshot = await getDocs(postsRef);
+        const communityPosts = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          communityId: selectedCommunity,
+          ...doc.data(),
+        }));
+        allPosts.push(...communityPosts);
       }
-    };
 
+      // Sort posts based on the selected option
+      if (selectedOption === "recent") {
+        allPosts.sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate());
+      } else if (selectedOption === "top") {
+        allPosts.sort((a, b) => b.likes - a.likes);
+      }
+
+      setPosts(allPosts);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchPosts();
-  }, [userCommunities, selectedOption]);
+  }, [session, userCommunities, selectedOption, selectedCommunity]);
+
+  const fetchUserRecipes = async () => {
+    if (!session?.user?.uid) return;
+
+    try {
+      const recipesRef = collection(db, "users", session.user.uid, "recipes");
+      const querySnapshot = await getDocs(recipesRef);
+      const recipes = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setUserRecipes(recipes);
+    } catch (error) {
+      console.error("Error fetching user's recipes:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserRecipes();
+  }, [session]);
 
   // Handle creating a new post
   const handleCreatePost = async () => {
+    if (!session || !session.user) {
+      alert("You must be logged in to create a post.");
+      return;
+    }
+
     if (!newPostContent || !selectedCommunity) {
       alert("Please fill in all fields.");
       return;
     }
-  
+
     try {
       let imageUrl = null;
-  
+
       // Upload the image to Firebase Storage if an image is selected
       if (newPostImage) {
         const storage = getStorage(); // Initialize Firebase Storage
@@ -98,97 +182,106 @@ export default function MainPage() {
         const snapshot = await uploadBytes(storageRef, newPostImage);
         imageUrl = await getDownloadURL(snapshot.ref);
       }
-  
+
       // Fetch the community name based on the selectedCommunity ID
       const communityRef = doc(db, "communities", selectedCommunity);
       const communitySnap = await getDoc(communityRef);
       const communityName = communitySnap.exists() ? communitySnap.data().name : "Unknown Community";
-  
-      // Add post to the community's posts subcollection
-      const postRef = await addDoc(
-        collection(db, "communities", selectedCommunity, "posts"),
-        {
-          content: newPostContent,
-          image: imageUrl, // Store the image URL
-          userName: session?.user?.name || "Anonymous",
-          userProfilePicture: session?.user?.image || "/default-profile.png",
-          communityName: communityName, // Use the fetched community name
-          timestamp: serverTimestamp(),
-          likes: 0,
-          comments: [],
-        }
-      );
-  
-      // Add post to the user's posts subcollection
-      await addDoc(collection(db, "users", session.user.uid, "posts"), {
+
+      // Fetch the selected recipe details
+      const recipeDetails = userRecipes.find((recipe) => recipe.id === selectedRecipe);
+
+      // Create the post data
+      const postData = {
         content: newPostContent,
         image: imageUrl, // Store the image URL
-        communityId: selectedCommunity,
+        userName: session.user.name || "Anonymous",
+        userProfilePicture: session.user.image,
         communityName: communityName, // Use the fetched community name
-        postId: postRef.id,
+        recipeId: selectedRecipe,
+        recipeTitle: recipeDetails?.title || null,
+        recipeImage: recipeDetails?.imageUrl || null, // Use imageUrl instead of image
         timestamp: serverTimestamp(),
-      });
-  
+        likes: 0,
+        comments: [],
+      };
+
+      // Add post to the community's posts subcollection
+      const postRef = await addDoc(collection(db, "communities", selectedCommunity, "posts"), postData);
+
+      // Add post to the main posts collection
+      const mainPostRef = doc(db, "posts", postRef.id);
+      await setDoc(mainPostRef, { ...postData, id: postRef.id });
+
+      // Add post to the user's posts subcollection
+      const userPostRef = doc(db, "users", session.user.uid, "posts", postRef.id);
+      await setDoc(userPostRef, { ...postData, id: postRef.id });
+
       console.log("Post created with ID:", postRef.id);
-      setIsModalOpen(false);
-      setNewPostContent("");
-      setNewPostImage(null);
-      setSelectedCommunity("");
+
+      // Refresh the page
+      window.location.reload();
     } catch (error) {
       console.error("Error creating post:", error);
     }
   };
+
+  
 
   return (
     <main className="flex bg-background">
       {/* Left-Side Navigation */}
       {isSidebarVisible && (
         <aside className="w-1/4 p-4 bg-gray-100 text-black">
-          <h2 className="text-lg font-bold mb-4">Navigation</h2>
+          <h2 className="text-lg font-bold mb-4">Your Communities</h2>
           <ul className="space-y-2">
-            <li className="p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300">
-              Home
+            <li
+              className={`p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300 ${
+                selectedCommunity === "all" ? "bg-blue-500 text-blue" : ""
+              }`}
+              onClick={() => handleCommunitySelect("all")}
+            >
+              All Communities
             </li>
-            <li className="p-2 text-black bg-gray-200 rounded cursor-pointer hover:bg-gray-300">
-              Popular
-            </li>
-            <li>
-              <h3 className="text-sm font-semibold mt-4">Your Communities</h3>
-              <ul className="space-y-1 mt-2">
-                {userCommunities.map((community) => (
-                  <li
-                    key={community.id}
-                    className="p-2 bg-gray-200 rounded cursor-pointer hover:bg-gray-300"
-                  >
-                    {community.name}
-                  </li>
-                ))}
-              </ul>
-            </li>
+            {userCommunities.map((community) => (
+              <li
+                key={community.id}
+                className="p-2 bg-gray-200 rounded flex items-center hover:bg-gray-300"
+              >
+                {!community.isTentative && (
+                  <div>
+                    <span
+                      className={`cursor-pointer ${
+                        selectedCommunity === community.id ? "text-blue font-semibold" : ""
+                      }`}
+                      onClick={() => handleCommunitySelect(community.id)}
+                    >
+                      {community.name}
+                    </span>
+                    <button
+                      onClick={() => router.push(`/main/community/${community.id}`)}
+                      className="bg-blue text-white px-2 py-1 rounded hover:bg-red ml-2"
+                      title="Click to go to this community" // Added hover message
+                    >
+                      &gt;
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
           </ul>
         </aside>
       )}
 
-      {/* Divider with Toggle Button */}
-      <div className="relative flex items-center ">
-        <div className="h-full w-[2px] bg-gray"></div>
-        <Button
-          onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-          className="absolute -right-3 bg-black rounded-full p-1 shadow hover:bg-gray"
-        >
-          {isSidebarVisible ? "←" : "→"}
-        </Button>
-      </div>
-
       {/* Main Content */}
-      <section className="flex-grow p-6">
+      <section className="flex-grow p-6 bg-grey shadow-md rounded-lg ml-4 mr-6"> {/* Adjusted margins */}
         {/* Welcome Message */}
         <h1 className="text-3xl font-bold mb-4 text-black">Welcome Back, {firstName}! 👨‍🍳</h1>
 
         {/* Sorting Options */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex space-x-4">
-            {["for you", "recent", "trending"].map((option) => (
+            {["recent", "top"].map((option) => (
               <button
                 key={option}
                 onClick={() => setSelectedOption(option)}
@@ -210,42 +303,33 @@ export default function MainPage() {
           </Button>
         </div>
 
-        {/* Posts Section */}
-        <div className="space-y-4 text-black">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="p-4 bg-white rounded shadow hover:shadow-md cursor-pointer"
+        {/* Feed Component */}
+        {posts.length > 0 ? (
+          <Feed
+            posts={posts.map((post) => ({
+              ...post,
+              userProfilePicture: post.userProfilePicture || "/images/default-profile.png", // Fallback for user profile picture
+            }))}
+            handleLike={(postId) => handleLike(postId, selectedCommunity)}
+          />
+        ) : (
+          <div>
+          <h2 className="text-gray">No posts available. Join a community to start seeing posts!</h2>
+          <Button
+              onClick={() => router.push("/communities")}
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
             >
-              <div className="flex items-center mb-2">
-                <Image
-                  src={post.userProfilePicture}
-                  alt="User Profile"
-                  width={40} // Added width property
-                  height={40} // Added height property
-                  className="w-8 h-8 rounded-full mr-2"
-                />
-                <div>
-                  <h2 className="text-sm font-semibold">{post.userName}</h2>
-                  <h2 className="text-xs text-gray-500">
-                    {post.communityName} • {post.timestamp?.toDate().toLocaleString()}
-                  </h2>
-                </div>
-              </div>
-              <h3 className="text-lg font-bold">{post.content}</h3>
-              <div className="flex items-center space-x-4 mt-2">
-                <Button className="text-blue-500 hover:underline">Like ({post.likes})</Button>
-                <Button className="text-blue-500 hover:underline">Share</Button>
-              </div>
-            </div>
-          ))}
-        </div>
+            Join a community!
+          </Button>
+          </div>
+        )}
       </section>
 
       {/* Create Post Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+          <div className="relative bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            {/* Close Button */}
             <Button
               onClick={() => setIsModalOpen(false)}
               className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
@@ -262,7 +346,7 @@ export default function MainPage() {
             <input
               type="file"
               onChange={(e) => setNewPostImage(e.target.files[0])}
-              className="mb-4"
+              className="mb-4 text-black"
             />
             <select
               value={selectedCommunity}
@@ -273,6 +357,18 @@ export default function MainPage() {
               {userCommunities.map((community) => (
                 <option className="text-black" key={community.id} value={community.id}>
                   {community.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedRecipe}
+              onChange={(e) => setSelectedRecipe(e.target.value)}
+              className="w-full p-2 border rounded mb-4 text-black"
+            >
+              <option className="text-black" value="">Select a recipe (optional)</option>
+              {userRecipes.map((recipe) => (
+                <option className="text-black" key={recipe.id} value={recipe.id}>
+                  {recipe.title}
                 </option>
               ))}
             </select>
