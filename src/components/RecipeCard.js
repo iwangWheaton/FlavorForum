@@ -4,9 +4,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import StarComp from "@/app/main/reviews/StarRating/starComp";
+import { useSession } from "next-auth/react";
 
 const RecipeCard = ({ recipe }) => {
   const imageUrl = recipe.imageUrl || "/images/background.avif";
+  const { data: session } = useSession();
+  const userID = session?.user?.id || null; // Get the user ID from the session
   
   return (
     <Link href={`/recipes/${recipe.id}`}>
@@ -23,11 +26,7 @@ const RecipeCard = ({ recipe }) => {
           <div className="flex justify-between items-start">
             <h3 className="text-lg text-black">{recipe.title}</h3>
             <div className="flex items-center">
-              <StarComp>
-              onClick={(e) => handleClick(index + 1, e)}
-                onMouseEnter={() => setTemporaryRating(index + 1)}
-                onMouseLeave={() => setTemporaryRating(0)}
-           </StarComp>
+            <StarComp itemtitle ={recipe.title} userId = {userID} />
             </div>
           </div>
           <div className="mt-2 flex justify-between text-sm text-gray">
