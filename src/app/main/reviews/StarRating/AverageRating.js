@@ -17,7 +17,7 @@ const AverageRating = ({ itemtitle }) => {
 
   return (
     <div className="text-sm text-black mt-2">
-      {average !== null ? `Average Rating: ${average.toFixed(1)} ⭐` : 'No ratings yet'}
+      {average !== null ? `Average Rating: ${average.toFixed(1)} 🍔` : 'No ratings yet'}
     </div>
   );
 };
