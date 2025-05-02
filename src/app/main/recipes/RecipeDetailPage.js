@@ -201,7 +201,7 @@ export default function RecipeDetailPage({ params }) {
                 </Button>
               </div>
               <div className="flex items-center mt-2">
-                <StarComp />
+                <StarComp itemtitle={recipe?.title || "Unknown Title"} />
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import StarComp from "@/app/main/reviews/StarRating/starComp";
+import AverageRating from "@/app/main/reviews/StarRating/AverageRating";
 import { useSession } from "next-auth/react";
 
 const RecipeCard = ({ recipe }) => {
@@ -26,7 +27,9 @@ const RecipeCard = ({ recipe }) => {
           <div className="flex justify-between items-start">
             <h3 className="text-lg font-semibold text-gray">{recipe.title}</h3>
             <div className="flex items-center">
-            <StarComp itemtitle ={recipe.title} userId = {userID} />
+              
+        
+            <AverageRating itemtitle={recipe.title} />
             </div>
           </div>
           <div className="mt-2 flex justify-between text-sm text-gray">

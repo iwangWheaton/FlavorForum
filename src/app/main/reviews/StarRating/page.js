@@ -3,8 +3,8 @@
 "use client";
 
 import "./stars.css";
-import { useState } from "react";
-import { handleUserRating } from "@/lib/ratingService";
+import { useState, useEffect } from "react"; // Import useEffect here
+import { HandleUserRating } from "@/lib/ratingService";
 import { useSession } from "next-auth/react";
 
 const DEFAULT_COUNT = 5;
@@ -13,60 +13,71 @@ const DEFAULT_UNSELECTED_COLOR = "grey";
 const DEFAULT_COLOR = "yellow";
 const DEFAULT_ITEM_TITLE = "Recipe";
 
-export default function Stars({ count, defaultRating, icon, color, iconSize, itemTitle, itemId, userEmail }) {
+export default function Stars({ count, defaultRating, icon, color, iconSize, userId, itemtitle, }) {
   const { data: session, status } = useSession();
   const [rating, setRating] = useState(defaultRating);
   const [temporaryRating, setTemporaryRating] = useState(0);
+  const [finalUserId, setFinalUserId] = useState(null);
 
   const [ratingData, setRatingData] = useState({
-    userId: session?.user?.email || userEmail,
-    itemId: itemId || "123",
+    userId: null,  // Initialize as null
     rating: rating || 0,
+    itemtitle: itemtitle || "Recipe"
   });
+  console.log("itemtitle:", itemtitle); // Log to verify what was passed in
 
-  const handleChange = (e) => {
-    setRatingData({ ...ratingData, [e.target.name]: e.target.value });
+  // Update finalUserId and ratingData when session changes
+  useEffect(() => {
+    if (status === "authenticated") {
+      const userEmail = session?.user?.email;
+      setFinalUserId(userEmail || userId); // Set finalUserId
+      setRatingData((prevData) => ({
+        ...prevData,
+        userId: userEmail || userId, // Set userId in ratingData
+      }));
+    } else if (status === "unauthenticated") {
+      setFinalUserId(userId); // Fallback to userId prop when unauthenticated
+      setRatingData((prevData) => ({
+        ...prevData,
+        userId: userId, // Set userId in ratingData
+      }));
+    }
+  }, [session, status, userId]);
+
+  if (status === "loading") {
+    return <div>Loading...</div>;  // Show loading state while session data loads
   }
 
   let stars = Array(count || DEFAULT_COUNT).fill(icon || DEFAULT_ICON);
 
-  const handleClick = async (rating, e) => {
+  const handleClick = async (newRating, e) => {
     e.preventDefault();
     console.log("Session data:", session);
-    setRating(rating);
+    setRating(newRating);
 
+    if (!finalUserId) {
+      alert("Please sign in to rate this item.");
+      return;
+    }
+    const updatedRatingData = {
+      ...ratingData,
+      rating: newRating,           // ✅ include the latest rating
+      itemtitle: itemtitle || "Recipe", // ✅ ensure item title is included
+      userId: finalUserId,         // ✅ ensure userId is consistent
+    };
     try {
-      const userId = session?.user?.email;
-      if (!userId) {
-        alert("Please sign in to rate this item.");
-        return;
-}
-
-        const ratingData = {
-          ...ratingData,
-        }
-        await HandleUserRating(ratingData, userId, itemId);
-      }
-    catch (error) {
+      // Call HandleUserRating once with the correct ratingData and finalUserId
+      await HandleUserRating(updatedRatingData, finalUserId);
+    } catch (error) {
       console.error("Error handling user rating:", error);
     }
-    await HandleUserRating({itemTitle: itemTitle || DEFAULT_ITEM_TITLE, userEmail, itemId });
   };
 
   return (
     <div className="starsContainer">
       {stars.map((item, index) => {
-        const isActiveColor =
-          (rating || temporaryRating) &&
-          (index < rating || index < temporaryRating);
-
-        let elementColor = "";
-
-        if (isActiveColor) {
-          elementColor = color || DEFAULT_COLOR;
-        } else {
-          elementColor = DEFAULT_UNSELECTED_COLOR;
-        }
+        const isActiveColor = (rating || temporaryRating) && (index < rating || index < temporaryRating);
+        let elementColor = isActiveColor ? color || DEFAULT_COLOR : DEFAULT_UNSELECTED_COLOR;
 
         return (
           <div
@@ -77,17 +88,14 @@ export default function Stars({ count, defaultRating, icon, color, iconSize, ite
               color: elementColor,
               filter: `${isActiveColor ? "grayscale(0%)" : "grayscale(100%)"}`,
             }}
-           onMouseEnter={() => setTemporaryRating(index + 1)}
-           onMouseLeave={() => setTemporaryRating(0)}
-           onClick={(e) => handleClick(index + 1, e)}
+            onMouseEnter={() => setTemporaryRating(index + 1)}
+            onMouseLeave={() => setTemporaryRating(0)}
+            onClick={(e) => handleClick(index + 1, e)}
           >
-            {icon ? icon : DEFAULT_ICON}
+            {icon || DEFAULT_ICON}
           </div>
         );
       })}
     </div>
   );
 }
-
-
-

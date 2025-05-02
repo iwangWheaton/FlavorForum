@@ -269,7 +269,7 @@ export default function CommunityPage({ params: paramsPromise }) {
             </div>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-500 text-black rounded hover:bg-blue-600"
             >
               Create Post
             </button>
@@ -285,7 +285,7 @@ export default function CommunityPage({ params: paramsPromise }) {
               handleLike={(postId) => handleLike(postId)}
             />
           ) : (
-            <p className="text-gray-500">No posts available. Be the first to post in this community!</p>
+            <p className="text-black">No posts available. Be the first to post in this community!</p>
           )}
         </section>
       </div>
@@ -315,7 +315,7 @@ export default function CommunityPage({ params: paramsPromise }) {
             />
             <button
               onClick={handleCreatePost}
-              className="w-full bg-blue-500 p-2 rounded hover:bg-blue-600"
+              className="w-full bg-blue-500 p-2 rounded hover:bg-blue-600 text-black"
             >
               Post
             </button>
