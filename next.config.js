@@ -6,6 +6,10 @@ const nextConfig = {
       { hostname: '*' }
     ],
   },
+  serverExternalPackages: ['firebase-admin'],
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

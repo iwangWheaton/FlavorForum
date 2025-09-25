@@ -27,9 +27,7 @@ const RecipeCard = ({ recipe }) => {
           <div className="flex justify-between items-start">
             <h3 className="text-lg font-semibold text-gray">{recipe.title}</h3>
             <div className="flex items-center">
-              
-        
-            <AverageRating itemtitle={recipe.title} />
+              <AverageRating itemtitle={recipe.title} />
             </div>
           </div>
           <div className="mt-2 flex justify-between text-sm text-gray">
